@@ -8,7 +8,7 @@ import java.io.StringReader;
 public class LexerTest {
 
     @Test
-    public void apiTest() throws ParseException {
+    public void apiTest() throws SQLParseException {
         String test = "select * from table1;";
         Lexer lexer = new Lexer(new StringReader(test));
         Assert.assertEquals("SELECT: SELECT", lexer.current().toString());
@@ -26,7 +26,7 @@ public class LexerTest {
     }
 
     @Test
-    public void allTest() throws ParseException {
+    public void allTest() throws SQLParseException {
         String expected = "CREATE: CREATE\n" +
                 "TABLE: TABLE\n" +
                 "IDENTIFIER: student\n" +
@@ -35,7 +35,7 @@ public class LexerTest {
                 "INT: INT\n" +
                 "COMMA: ,\n" +
                 "IDENTIFIER: name\n" +
-                "TEXT: TEXT\n" +
+                "STRING: STRING\n" +
                 "COMMA: ,\n" +
                 "IDENTIFIER: age\n" +
                 "INT: INT\n" +
@@ -55,7 +55,7 @@ public class LexerTest {
                 "OPEN_PAR: (\n" +
                 "INT_LITERAL: 1\n" +
                 "COMMA: ,\n" +
-                "TEXT_LITERAL: 小明\n" +
+                "STRING_LITERAL: 小明\n" +
                 "COMMA: ,\n" +
                 "INT_LITERAL: 20\n" +
                 "CLOSE_PAR: )\n" +
@@ -123,9 +123,9 @@ public class LexerTest {
                 "IDENTIFIER: a.*\n" +
                 "IDENTIFIER: c\n" +
                 "NE: !=\n" +
-                "TEXT_LITERAL: 'escape'\\nothing\n";
+                "STRING_LITERAL: 'escape'\\nothing\n";
 
-        String statements = "create table student(id int, name text, age int);\n" +
+        String statements = "create table student(id int, name string, age int);\n" +
                 "insert into student (id, name, age) values(1, '小明', 20);\n" +
                 "select id, name As student_name, sum(age) from student where student.age = 20 and f() group by foo having bar order by something limit 10 offset 2333\n" +
                 "1+2 * 3 / 4 - 5 + (666.000 + 0.0 + 11111) a.b.c.d .a . aaa ... a.* a.b.c.* a.*c != '\\'escape\\'\\nothing'";

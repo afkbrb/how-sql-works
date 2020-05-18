@@ -1,6 +1,10 @@
 package com.github.afkbrb.sql.ast.expressions;
 
-import com.github.afkbrb.sql.ASTVisitor;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 
 public class BinaryExpression implements Expression {
 
@@ -8,27 +12,35 @@ public class BinaryExpression implements Expression {
     private final Expression left;
     private final Expression right;
 
-    public BinaryExpression(BinaryOperatorType op, Expression left, Expression right) {
-        this.op = op;
-        this.left = left;
-        this.right = right;
+    public BinaryExpression(@NotNull BinaryOperatorType op, @NotNull Expression left, @NotNull Expression right) {
+        this.op = Objects.requireNonNull(op);
+        this.left = Objects.requireNonNull(left);
+        this.right = Objects.requireNonNull(right);
     }
 
+    @NotNull
     public BinaryOperatorType getOp() {
         return op;
     }
 
+    @NotNull
     public Expression getLeft() {
         return left;
     }
 
+    @NotNull
     public Expression getRight() {
         return right;
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 
     public enum BinaryOperatorType {

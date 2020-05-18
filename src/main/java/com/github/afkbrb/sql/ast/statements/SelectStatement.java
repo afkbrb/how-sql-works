@@ -1,15 +1,18 @@
 package com.github.afkbrb.sql.ast.statements;
 
-import com.github.afkbrb.sql.ASTVisitor;
-import com.github.afkbrb.sql.ast.ASTNode;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
+import com.github.afkbrb.sql.ast.Node;
 import com.github.afkbrb.sql.ast.expressions.Expression;
 import com.github.afkbrb.sql.utils.Pair;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
- * SELECT selectOption selectItemList FROM tableReferenceList WHERE whereCondition GROUP BY groupByExpression \
- * HAVING havingCondition ORDER BY orderExpression ASC/DESC LIMIT limitExpression OFFSET offsetExpression;
+ * SELECT selectOption selectItemList FROM tableReferenceList WHERE whereCondition groupBy orderBy limit;
  */
 public class SelectStatement extends Statement implements Expression {
 
@@ -17,59 +20,65 @@ public class SelectStatement extends Statement implements Expression {
     private final List<Pair<Expression, String>> selectItemList;
     private final TableReference tableReference;
     private final Expression whereCondition;
-    private final Expression groupByExpression;
-    private final Expression havingCondition;
+    private final GroupBy groupBy;
     private final OrderBy orderBy;
     private final Limit limit;
 
-    public SelectStatement(SelectOption selectOption, List<Pair<Expression, String>> selectItemList,
-                           TableReference tableReference, Expression whereCondition,
-                           Expression groupByExpression, Expression havingCondition, OrderBy orderBy, Limit limit) {
+    public SelectStatement(@Nullable SelectOption selectOption, @NotNull List<Pair<Expression, String>> selectItemList,
+                           @Nullable TableReference tableReference, @Nullable Expression whereCondition,
+                           @Nullable GroupBy groupBy, @Nullable OrderBy orderBy, @Nullable Limit limit) {
         this.selectOption = selectOption;
-        this.selectItemList = ensureNonNull(selectItemList);
+        this.selectItemList = Objects.requireNonNull(selectItemList);
         this.tableReference = tableReference;
         this.whereCondition = whereCondition;
-        this.groupByExpression = groupByExpression;
-        this.havingCondition = havingCondition;
+        this.groupBy = groupBy;
         this.orderBy = orderBy;
         this.limit = limit;
     }
 
+    @Nullable
     public SelectOption getSelectOption() {
         return selectOption;
     }
 
+    @NotNull
     public List<Pair<Expression, String>> getSelectItemList() {
         return selectItemList;
     }
 
+    @Nullable
     public TableReference getTableReference() {
         return tableReference;
     }
 
+    @Nullable
     public Expression getWhereCondition() {
         return whereCondition;
     }
 
-    public Expression getGroupByExpression() {
-        return groupByExpression;
+    @Nullable
+    public GroupBy getGroupBy() {
+        return groupBy;
     }
 
-    public Expression getHavingCondition() {
-        return havingCondition;
-    }
-
+    @Nullable
     public OrderBy getOrderBy() {
         return orderBy;
     }
 
+    @Nullable
     public Limit getLimit() {
         return limit;
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 
     public enum SelectOption {
@@ -77,68 +86,93 @@ public class SelectStatement extends Statement implements Expression {
         DISTINCT
     }
 
-    public interface TableReference extends ASTNode {
+    public interface TableReference extends Node {
 
     }
 
-    public static class OrderBy {
-        private final Expression orderByExpression;
-        private final boolean desc;
+    public static class GroupBy implements Node {
 
-        public OrderBy(Expression orderByExpression, boolean desc) {
-            this.orderByExpression = orderByExpression;
-            this.desc = desc;
+        private final List<Expression> groupByList;
+        private final Expression havingCondition;
+
+        public GroupBy(@NotNull List<Expression> expressionList, @Nullable Expression havingCondition) {
+            this.groupByList = Objects.requireNonNull(expressionList);
+            this.havingCondition = havingCondition;
         }
 
-        public Expression getOrderByExpression() {
-            return orderByExpression;
+        @NotNull
+        public List<Expression> getGroupByList() {
+            return groupByList;
         }
 
-        public boolean isDesc() {
-            return desc;
+        @Nullable
+        public Expression getHavingCondition() {
+            return havingCondition;
+        }
+
+        @Override
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringVisitor(this).toString();
         }
     }
 
-    public static class Limit {
+    public static class OrderBy implements Node {
+
+        private final List<Pair<Expression, Boolean>> orderByList;
+
+        public OrderBy(@NotNull List<Pair<Expression, Boolean>> orderByList) {
+            this.orderByList = Objects.requireNonNull(orderByList);
+        }
+
+        @NotNull
+        public List<Pair<Expression, Boolean>> getOrderByList() {
+            return orderByList;
+        }
+
+        @Override
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringVisitor(this).toString();
+        }
+    }
+
+    public static class Limit implements Node {
 
         private final Expression limitExpression;
         private final Expression offsetExpression;
 
-        public Limit(Expression limitExpression, Expression offsetExpression) {
-            this.limitExpression = limitExpression;
+        public Limit(@NotNull Expression limitExpression, @Nullable Expression offsetExpression) {
+            this.limitExpression = Objects.requireNonNull(limitExpression);
             this.offsetExpression = offsetExpression;
         }
 
+        @NotNull
         public Expression getLimitExpression() {
             return limitExpression;
         }
 
+        @Nullable
         public Expression getOffsetExpression() {
             return offsetExpression;
         }
-    }
 
-    public static class TableReferenceFactor implements TableReference {
-
-        private final TableReference tableReference;
-        private final String alias;
-
-        public TableReferenceFactor(TableReference tableReference, String alias) {
-            this.tableReference = tableReference;
-            this.alias = alias;
-        }
-
-        public TableReference getTableReference() {
-            return tableReference;
-        }
-
-        public String getAlias() {
-            return alias;
+        @Override
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
         }
 
         @Override
-        public void accept(ASTVisitor visitor) {
-            visitor.visit(this);
+        public String toString() {
+            return new ToStringVisitor(this).toString();
         }
     }
 
@@ -149,17 +183,19 @@ public class SelectStatement extends Statement implements Expression {
         private final TableReference right;
         private final Expression on;
 
-        public TableJoin(JoinType joinType, TableReference left, TableReference right, Expression on) {
+        public TableJoin(JoinType joinType, @NotNull TableReference left, @NotNull TableReference right, @Nullable Expression on) {
             this.joinType = joinType;
-            this.left = left;
-            this.right = right;
+            this.left = Objects.requireNonNull(left);
+            this.right = Objects.requireNonNull(right);
             this.on = on;
         }
 
+        @NotNull
         public TableReference getLeft() {
             return left;
         }
 
+        @NotNull
         public TableReference getRight() {
             return right;
         }
@@ -168,13 +204,19 @@ public class SelectStatement extends Statement implements Expression {
             return joinType;
         }
 
+        @Nullable
         public Expression getOn() {
             return on;
         }
 
         @Override
-        public void accept(ASTVisitor visitor) {
-            visitor.visit(this);
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringVisitor(this).toString();
         }
 
         public enum JoinType {
@@ -188,11 +230,12 @@ public class SelectStatement extends Statement implements Expression {
         private final SelectStatement selectStatement;
         private final String alias;
 
-        public SubQueryFactor(SelectStatement selectStatement, String alias) {
-            this.selectStatement = selectStatement;
+        public SubQueryFactor(@NotNull SelectStatement selectStatement, String alias) {
+            this.selectStatement = Objects.requireNonNull(selectStatement);
             this.alias = alias;
         }
 
+        @NotNull
         public SelectStatement getSelectStatement() {
             return selectStatement;
         }
@@ -202,8 +245,13 @@ public class SelectStatement extends Statement implements Expression {
         }
 
         @Override
-        public void accept(ASTVisitor visitor) {
-            visitor.visit(this);
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringVisitor(this).toString();
         }
     }
 
@@ -226,8 +274,13 @@ public class SelectStatement extends Statement implements Expression {
         }
 
         @Override
-        public void accept(ASTVisitor visitor) {
-            visitor.visit(this);
+        public <T> T accept(Visitor<? extends T> visitor) {
+            return visitor.visit(this);
+        }
+
+        @Override
+        public String toString() {
+            return new ToStringVisitor(this).toString();
         }
     }
 }

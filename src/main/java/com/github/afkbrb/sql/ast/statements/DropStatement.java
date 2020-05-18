@@ -1,6 +1,7 @@
 package com.github.afkbrb.sql.ast.statements;
 
-import com.github.afkbrb.sql.ASTVisitor;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
 
 /**
  * DROP TABLE tableName;
@@ -18,7 +19,12 @@ public class DropStatement extends Statement {
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 }

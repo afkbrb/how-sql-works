@@ -1,8 +1,12 @@
 package com.github.afkbrb.sql.ast.statements;
 
-import com.github.afkbrb.sql.ASTVisitor;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
+import com.github.afkbrb.sql.model.DataType;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * CREATE TABLE tableName (columnDefinitionList);
@@ -12,11 +16,12 @@ public class CreateStatement extends Statement {
     private final String tableName;
     private final List<ColumnDefinition> columnDefinitionList;
 
-    public CreateStatement(String tableName, List<ColumnDefinition> columnDefinitionList) {
+    public CreateStatement(String tableName, @NotNull List<ColumnDefinition> columnDefinitionList) {
         this.tableName = tableName;
-        this.columnDefinitionList = ensureNonNull(columnDefinitionList);
+        this.columnDefinitionList = Objects.requireNonNull(columnDefinitionList);
     }
 
+    @NotNull
     public List<ColumnDefinition> getColumnDefinitionList() {
         return columnDefinitionList;
     }
@@ -26,14 +31,13 @@ public class CreateStatement extends Statement {
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
     }
 
-    public enum DataType {
-        INT,
-        DOUBLE,
-        TEXT
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 
     public static class ColumnDefinition {

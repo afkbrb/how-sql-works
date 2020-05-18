@@ -11,7 +11,7 @@ public enum TokenType {
 
     INT_LITERAL,
     DOUBLE_LITERAL,
-    TEXT_LITERAL,
+    STRING_LITERAL,
 
     EQ,
     LT,
@@ -68,8 +68,8 @@ public enum TokenType {
     RIGHT,
     SELECT,
     SET,
+    STRING,
     TABLE,
-    TEXT,
     TRUE,
     UPDATE,
     VALUES,
@@ -114,8 +114,8 @@ public enum TokenType {
         keywords.put("RIGHT", RIGHT);
         keywords.put("SELECT", SELECT);
         keywords.put("SET", SET);
+        keywords.put("STRING", STRING);
         keywords.put("TABLE", TABLE);
-        keywords.put("TEXT", TEXT);
         keywords.put("TRUE", TRUE);
         keywords.put("UPDATE", UPDATE);
         keywords.put("VALUES", VALUES);

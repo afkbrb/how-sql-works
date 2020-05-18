@@ -24,7 +24,7 @@ public class Lexer {
      * <p>
      * 然而本项目的语法是 LL(0)，所以最终只用到了 lookAhead(0)。
      */
-    public Token lookAhead(int distance) throws ParseException {
+    public Token lookAhead(int distance) throws SQLParseException {
         assert distance >= 0;
         while (distance >= lookAheadBuffer.size()) {
             lookAheadBuffer.add(next());
@@ -34,23 +34,23 @@ public class Lexer {
         return new Token(token.getType(), token.getText()); // copy
     }
 
-    public Token current() throws ParseException {
+    public Token current() throws SQLParseException {
         return lookAhead(0);
     }
 
-    public Token peek() throws ParseException {
+    public Token peek() throws SQLParseException {
         return lookAhead(1);
     }
 
     /**
      * “吃掉”当前 token，移动到下一个 token。
      */
-    public Token consume() throws ParseException {
+    public Token consume() throws SQLParseException {
         lookAhead(0); // 先保证 buffer 中有 token
         return lookAheadBuffer.remove(0);
     }
 
-    private Token next() throws ParseException {
+    private Token next() throws SQLParseException {
         int ch;
         ch = nextChar();
         while (isBlank(ch)) { // 忽略空白符
@@ -122,14 +122,14 @@ public class Lexer {
         }
     }
 
-    private Token getTextLiteral() throws ParseException {
+    private Token getTextLiteral() throws SQLParseException {
         int quote = nextChar();
         assert quote == '\'' || quote == '"';
         StringBuilder sb = new StringBuilder();
 
         int ch = nextChar();
         while (ch != -1) {
-            if (ch == quote) return new Token(TEXT_LITERAL, sb.toString());
+            if (ch == quote) return new Token(STRING_LITERAL, sb.toString());
 
             if (ch == '\\') { // 处理对引号的转义
                 int t = nextChar();
@@ -152,7 +152,7 @@ public class Lexer {
         return new Token(EOF, "");
     }
 
-    private Token getIntOrDoubleLiteral() throws ParseException {
+    private Token getIntOrDoubleLiteral() throws SQLParseException {
         StringBuilder sb = new StringBuilder();
         boolean isDouble = false;
         int ch = nextChar();
@@ -180,7 +180,7 @@ public class Lexer {
         return new Token(isDouble ? DOUBLE_LITERAL : INT_LITERAL, sb.toString());
     }
 
-    private Token getIdentifierOrKeyword() throws ParseException {
+    private Token getIdentifierOrKeyword() throws SQLParseException {
         StringBuilder sb = new StringBuilder();
 
         sb.append(doGetIdentifier());
@@ -203,7 +203,7 @@ public class Lexer {
         }
     }
 
-    private String doGetIdentifier() throws ParseException {
+    private String doGetIdentifier() throws SQLParseException {
         StringBuilder sb = new StringBuilder();
 
         int ch = nextChar();
@@ -246,8 +246,8 @@ public class Lexer {
         }
     }
 
-    private void error(String msg) throws ParseException {
-        throw new ParseException(msg);
+    private void error(String msg) throws SQLParseException {
+        throw new SQLParseException(msg);
     }
 
     private static boolean isBlank(int ch) {

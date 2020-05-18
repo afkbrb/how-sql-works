@@ -1,28 +1,38 @@
 package com.github.afkbrb.sql.ast.expressions;
 
-import com.github.afkbrb.sql.ASTVisitor;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
 
 public class UnaryExpression implements Expression {
 
     private final UnaryOperationType op;
     private final Expression expression;
 
-    public UnaryExpression(UnaryOperationType op, Expression expression) {
+    public UnaryExpression(UnaryOperationType op, @NotNull Expression expression) {
         this.op = op;
-        this.expression = expression;
+        this.expression = Objects.requireNonNull(expression);
     }
 
     public UnaryOperationType getOp() {
         return op;
     }
 
+    @NotNull
     public Expression getExpression() {
         return expression;
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 
     public enum UnaryOperationType {

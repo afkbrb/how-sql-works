@@ -1,6 +1,7 @@
 package com.github.afkbrb.sql.ast.expressions;
 
-import com.github.afkbrb.sql.ASTVisitor;
+import com.github.afkbrb.sql.visitors.ToStringVisitor;
+import com.github.afkbrb.sql.visitors.Visitor;
 
 public class TextExpression implements Expression {
 
@@ -15,7 +16,12 @@ public class TextExpression implements Expression {
     }
 
     @Override
-    public void accept(ASTVisitor visitor) {
-        visitor.visit(this);
+    public <T> T accept(Visitor<? extends T> visitor) {
+        return visitor.visit(this);
+    }
+
+    @Override
+    public String toString() {
+        return new ToStringVisitor(this).toString();
     }
 }
