@@ -1,5 +1,9 @@
 package com.github.afkbrb.sql.model;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Objects;
+
 public class Column {
 
     private int columnIndex;
@@ -7,31 +11,34 @@ public class Column {
     private DataType dataType;
     private String tableAlias;
 
-    public Column(int columnIndex, String columnName, DataType dataType, String tableAlias) {
+    public Column(int columnIndex, @NotNull String columnName, @NotNull DataType dataType, @NotNull String tableAlias) {
         this.columnIndex = columnIndex;
-        this.columnName = columnName;
-        this.dataType = dataType;
-        this.tableAlias = tableAlias;
+        this.columnName = Objects.requireNonNull(columnName);
+        this.dataType = Objects.requireNonNull(dataType);
+        this.tableAlias = Objects.requireNonNull(tableAlias);
     }
 
     public int getColumnIndex() {
         return columnIndex;
     }
 
+    @NotNull
     public String getColumnName() {
         return columnName;
     }
 
+    @NotNull
     public DataType getDataType() {
         return dataType;
     }
 
+    @NotNull
     public String getTableAlias() {
         return tableAlias;
     }
 
-    public void setTableAlias(String tableAlias) {
-        this.tableAlias = tableAlias;
+    public void setTableAlias(@NotNull String tableAlias) {
+        this.tableAlias = Objects.requireNonNull(tableAlias);
     }
 
     @Override

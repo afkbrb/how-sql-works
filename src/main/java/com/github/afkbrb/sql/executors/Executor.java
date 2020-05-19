@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Objects;
 
-import static com.github.afkbrb.sql.model.DataType.*;
+import static com.github.afkbrb.sql.model.DataType.DOUBLE;
 import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
 
 public abstract class Executor {
@@ -19,32 +19,34 @@ public abstract class Executor {
     /**
      * 判断给定的 row 是否满足给定的条件。
      */
-    @NotNull
-    protected static boolean predict(Row row, Schema schema, Expression condition) {
+    protected static boolean predict(Row row, Schema schema, Expression condition) throws SQLExecuteException {
         TypedValue typedValue = evaluate(row, schema, condition);
-        return typedValue != null && typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() == 1;
+        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
     }
 
-    @NotNull
-    protected static boolean predict(List<Row> rows, Schema schema, Expression condition) {
+    protected static boolean predict(List<Row> rows, Schema schema, Expression condition) throws SQLExecuteException {
         TypedValue typedValue = evaluate(rows, schema, condition);
-        return typedValue != null && typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() == 1;
+        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
     }
 
     @NotNull
-    protected static TypedValue evaluate(Row row, Schema schema, Expression expression) {
+    protected static TypedValue evaluate(Row row, Schema schema, Expression expression) throws SQLExecuteException {
         RowEvaluator evaluator = new RowEvaluator(row, schema);
-        return evaluator.evaluate(expression);
+        TypedValue typedValue = evaluator.evaluate(expression);
+        if (isError(typedValue)) error(typedValue.getValue().toString());
+        return typedValue;
     }
 
     @NotNull
-    protected static TypedValue evaluate(List<Row> rows, Schema schema, Expression expression) {
+    protected static TypedValue evaluate(List<Row> rows, Schema schema, Expression expression) throws SQLExecuteException {
         RowsEvaluator evaluator = new RowsEvaluator(rows, schema);
-        return evaluator.evaluate(expression);
+        TypedValue typedValue = evaluator.evaluate(expression);
+        if (isError(typedValue)) error(typedValue.getValue().toString());
+        return typedValue;
     }
 
     @NotNull
-    protected static TypedValue evaluate(Expression expression) {
+    protected static TypedValue evaluate(Expression expression) throws SQLExecuteException {
         return evaluate((Row) null, null, expression);
     }
 
@@ -72,8 +74,7 @@ public abstract class Executor {
     protected static TypedValue ensureDataType(@NotNull DataType type, @NotNull TypedValue typedValue) throws SQLExecuteException {
         Objects.requireNonNull(type);
         Objects.requireNonNull(typedValue);
-        if (isError(typedValue))
-            error("evaluate error: " + typedValue.getValue());
+        //  所有的 error 已经由 evaluate 相关函数处理了，此处不再处理
         if (isNull(typedValue)) return TypedValue.NULL;
         if (typedValue.getDataType() != type) {
             if (type == DOUBLE && isInt(typedValue)) {

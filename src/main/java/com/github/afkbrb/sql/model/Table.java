@@ -52,6 +52,10 @@ public class Table {
         return rows;
     }
 
+    public List<Row> copyRows() {
+        return new ArrayList<>(rows);
+    }
+
     public int getRowCount() {
         return rows.size();
     }

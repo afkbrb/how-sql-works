@@ -9,6 +9,7 @@ public class FunctionRegistry {
 
     static {
         registerFunction(new Max());
+        registerFunction(new Count());
     }
 
     private static void registerFunction(Function function) {

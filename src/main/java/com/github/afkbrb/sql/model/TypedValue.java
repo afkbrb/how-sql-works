@@ -76,4 +76,9 @@ public class TypedValue {
         }
         return false;
     }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dataType, value);
+    }
 }

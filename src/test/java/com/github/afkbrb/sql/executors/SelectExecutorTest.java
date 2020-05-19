@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.io.StringReader;
 
+
 public class SelectExecutorTest extends ExecutorTest {
 
     private static Table select(String selectStatement) throws SQLParseException, SQLExecuteException {
@@ -26,4 +27,5 @@ public class SelectExecutorTest extends ExecutorTest {
         execute("insert into student values (2, 'abc', 24, 66.6)");
         execute("insert into student values (3, '渣渣辉', 24, 80)");
     }
+
 }

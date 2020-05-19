@@ -7,6 +7,7 @@ import com.github.afkbrb.sql.ast.statements.DeleteStatement;
 import com.github.afkbrb.sql.model.Row;
 import com.github.afkbrb.sql.model.Table;
 
+import java.util.Iterator;
 import java.util.List;
 
 public class DeleteExecutor extends Executor {
@@ -16,6 +17,8 @@ public class DeleteExecutor extends Executor {
         Table table = requireTableExists(tableName);
         List<Row> rows = table.getRows();
         Expression condition = deleteStatement.getWhereCondition() == null ? new IntExpression(1) : deleteStatement.getWhereCondition();
-        rows.removeIf(row -> predict(row, table.getSchema(), condition));
+        for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
+            if (predict(iterator.next(), table.getSchema(), condition)) iterator.remove();
+        }
     }
 }
