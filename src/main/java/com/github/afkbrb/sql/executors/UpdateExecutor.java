@@ -30,7 +30,7 @@ public class UpdateExecutor extends Executor {
             List<Cell> cells = row.getCells();
             for (Pair<String, Expression> pair : updateList) {
                 Column column = schema.getColumn(pair.getKey());
-                if (column == null) throw new SQLExecuteException("Cannot find column %s in table %s", pair.getKey(), tableName);
+                if (column == null) throw new SQLExecuteException("cannot find column %s in table %s", pair.getKey(), tableName);
                 int index = column.getColumnIndex();
                 DataType expectedType = column.getDataType();
                 TypedValue typedValue = evaluate(schema, row, pair.getValue());

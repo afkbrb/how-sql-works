@@ -19,6 +19,19 @@ public interface Visitor<T> {
     T visit(UpdateStatement node);
 
 
+    T visit(TableJoin node);
+
+    T visit(DerivedTable node);
+
+    T visit(RealTableFactor node);
+
+    T visit(GroupBy node);
+
+    T visit(OrderBy node);
+
+    T visit(Limit node);
+
+
     T visit(BetweenExpression node);
 
     T visit(BinaryExpression node);
@@ -53,16 +66,5 @@ public interface Visitor<T> {
 
     T visit(AndExpression node);
 
-    T visit(TableJoin node);
-
-    T visit(DerivedTable node);
-
-    T visit(RealTableFactor node);
-
-    T visit(GroupBy node);
-
-    T visit(OrderBy node);
-
-    T visit(Limit node);
-
+    T visit(SubQueryExpression node);
 }

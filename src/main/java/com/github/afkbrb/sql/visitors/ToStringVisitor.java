@@ -401,4 +401,14 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         return null;
     }
 
+    @Override
+    public Void visit(SubQueryExpression node) {
+        if (node.isExists()) {
+            sb.append(" EXISTS ");
+        }
+        sb.append("(");
+        node.getSubQuery().accept(this);
+        sb.append(")");
+        return null;
+    }
 }

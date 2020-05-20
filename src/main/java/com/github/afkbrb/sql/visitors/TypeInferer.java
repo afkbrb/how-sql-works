@@ -2,6 +2,8 @@ package com.github.afkbrb.sql.visitors;
 
 import com.github.afkbrb.sql.SQLExecuteException;
 import com.github.afkbrb.sql.ast.expressions.*;
+import com.github.afkbrb.sql.ast.statements.SelectStatement;
+import com.github.afkbrb.sql.executors.SelectExecutor;
 import com.github.afkbrb.sql.functions.Function;
 import com.github.afkbrb.sql.functions.FunctionRegistry;
 import com.github.afkbrb.sql.model.*;
@@ -136,4 +138,21 @@ public class TypeInferer extends DefaultVisitor<DataType> {
         return INT;
     }
 
+    @Override
+    public DataType visit(SubQueryExpression node) {
+        if (node.isExists()) return INT;
+        SelectStatement subQuery = node.getSubQuery();
+        if (subQuery.getSelectItemList().size() != 1) return ERROR;
+
+        // 此处通过实际执行子查询类获取类型，为了降低开销，将 where 条件设为 0，
+        // 这样的话执行时实际上就只完成了 schema 的构建，开销非常小
+        SelectStatement simplifiedSubQuery = new SelectStatement(subQuery.getSelectItemList(), subQuery.getTableReference(),
+                new IntExpression(0), null, null, null);
+        try {
+            Table table = new SelectExecutor(context).doSelect(simplifiedSubQuery);
+            return table.getSchema().getColumns().get(0).getDataType();
+        } catch (SQLExecuteException e) {
+            return ERROR;
+        }
+    }
 }

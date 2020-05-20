@@ -8,8 +8,15 @@ public class FunctionRegistry {
     public static final Map<String, Function> nameToFunction = new HashMap<>();
 
     static {
+        // aggregate
         registerFunction(new Max());
+        registerFunction(new Min());
+        registerFunction(new Avg());
         registerFunction(new Count());
+
+        // normal
+        registerFunction(new Upper());
+        registerFunction(new Lower());
     }
 
     private static void registerFunction(Function function) {

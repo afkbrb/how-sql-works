@@ -19,13 +19,6 @@ public class Table {
     private Schema schema;
     private List<Row> rows = new ArrayList<>();
 
-    public static final Table DUMMY_TABLE;
-
-    static {
-        DUMMY_TABLE = new Table("dummy", Collections.emptyList());
-        DUMMY_TABLE.addRow(new Row(Collections.emptyList()));
-    }
-
     public Table(@Nullable String tableName, @NotNull List<Column> columns) {
         this.tableName = tableName;
         this.columns = Objects.requireNonNull(columns);
@@ -115,5 +108,14 @@ public class Table {
 
         sb.append("}");
         return sb.toString();
+    }
+
+    /**
+     * dummyTable 作为中间表使用，其内部的 rows 可能会被 where 过滤掉，所以每次都得返回一个新实例。
+     */
+    public static Table dummyTable() {
+        Table dummy = new Table("dummy", Collections.emptyList());
+        dummy.addRow(new Row(Collections.emptyList()));
+        return dummy;
     }
 }

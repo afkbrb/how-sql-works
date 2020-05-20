@@ -27,8 +27,10 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         this.row = row;
     }
 
+    @NotNull
     public TypedValue evaluate(Expression expression) {
-        return expression.accept(this);
+        TypedValue debug = expression.accept(this);
+        return debug;
     }
 
     @Override
@@ -52,7 +54,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             return new TypedValue(INT, toInt(targetVal >= leftVal && targetVal <= rightVal));
         }
 
-        return new EvaluateError("expect three strings or three numbers");
+        return new EvaluateError("expected three strings or three numbers");
     }
 
     @Override
@@ -130,7 +132,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             }
         }
 
-        return new EvaluateError("expect two numbers ro two strings");
+        return new EvaluateError("expected two numbers ro two strings");
     }
 
     @Override
@@ -155,16 +157,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue target = node.getTarget().accept(this);
         SelectStatement subQuery = node.getSubQuery();
         try {
-            Table table;
-            if (context != null) {
-                context.push(schema, row);
-                table = new SelectExecutor(context).doSelect(subQuery);
-                context.pop();
-            } else {
-                InheritedContext context = new InheritedContext();
-                context.push(schema, row);
-                table = new SelectExecutor(context).doSelect(subQuery);
-            }
+            Table table = doSubQuery(subQuery);
             if (table.getColumnCount() == 1) {
                 List<Row> rows = table.getRows();
                 List<TypedValue> typedValueList = new ArrayList<>();
@@ -182,6 +175,44 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         } catch (SQLExecuteException e) {
             return new EvaluateError(e.getMessage());
         }
+    }
+
+    @Override
+    public TypedValue visit(SubQueryExpression node) {
+        SelectStatement subQuery = node.getSubQuery();
+        try {
+            Table table = doSubQuery(subQuery);
+            if (node.isExists()) {
+                return new TypedValue(INT, toInt(table.getRowCount() > 0));
+            } else {
+                if (table.getRowCount() == 0) return TypedValue.NULL; // 0 行不报错，返回 NULL
+                if (table.getRowCount() == 1 && table.getColumnCount() == 1) {
+                    Row row = table.getRow(0);
+                    assert row != null;
+                    Cell cell = row.getCell(0);
+                    assert cell != null;
+                    return cell.getTypedValue();
+                } else {
+                    return new EvaluateError("sub query must return exactly 1 column and 0/1 row");
+                }
+            }
+        } catch (SQLExecuteException e) {
+            return new EvaluateError(e.getMessage());
+        }
+    }
+
+    private Table doSubQuery(SelectStatement subQuery) throws SQLExecuteException {
+        Table table;
+        if (context != null) {
+            context.push(schema, row);
+            table = new SelectExecutor(context).doSelect(subQuery);
+            context.pop();
+        } else {
+            InheritedContext context = new InheritedContext();
+            context.push(schema, row);
+            table = new SelectExecutor(context).doSelect(subQuery);
+        }
+        return table;
     }
 
     private static TypedValue inList(TypedValue target, List<TypedValue> typedValueList) {
@@ -203,7 +234,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             return new TypedValue(INT, 0);
         }
 
-        return new EvaluateError("expect a string or a number");
+        return new EvaluateError("expected a string or a number");
     }
 
     @Override
@@ -228,8 +259,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
 
     @Override
     public TypedValue visit(ColumnNameExpression node) {
-        Column column;
         try {
+            Column column;
             if (node.getTableName() == null) {
                 column = schema.getColumn(node.getColumnName());
             } else {
@@ -242,22 +273,24 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             }
 
             if (context != null) {
+                TypedValue typedValue;
                 if (node.getTableName() == null) {
-                    return context.getTypedValue(node.getColumnName());
+                    typedValue = context.getTypedValue(node.getColumnName());
                 } else {
-                    return context.getTypedValue(node.getTableName(), node.getColumnName());
+                    typedValue = context.getTypedValue(node.getTableName(), node.getColumnName());
                 }
+                if (typedValue != null) return typedValue;
             }
         } catch (SQLExecuteException e) {
             return new EvaluateError(e.getMessage());
         }
 
-        return new EvaluateError("Cannot find column with name %s", node);
+        return new EvaluateError("cannot find column with name %s", node);
     }
 
     @Override
     public TypedValue visit(WildcardExpression node) {
-        return new EvaluateError("Unexpected wildcard expression %s", node);
+        return new EvaluateError("unexpected wildcard expression %s", node.toString());
     }
 
     @Override
@@ -312,7 +345,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
                 return new TypedValue(INT, toInt(leftStr.matches(regex)));
             }
         }
-        return new EvaluateError("expect two strings");
+        return new EvaluateError("expected two strings");
     }
 
     @Override
@@ -336,7 +369,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
                 return new TypedValue(DOUBLE, value);
             }
         }
-        return new EvaluateError("expect a number");
+        return new EvaluateError("expected a number");
     }
 
     @Override
@@ -350,7 +383,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             double rightVal = ((Number) right.getValue()).doubleValue();
             return new TypedValue(INT, leftVal == 0 || rightVal == 0 ? 0 : 1);
         }
-        return new EvaluateError("expect two numbers");
+        return new EvaluateError("expected two numbers");
     }
 
     @Override
@@ -364,7 +397,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             double rightVal = ((Number) right.getValue()).doubleValue();
             return new TypedValue(INT, toInt(leftVal != 0 || rightVal != 0));
         }
-        return new EvaluateError("expect two numbers");
+        return new EvaluateError("expected two numbers");
     }
 
     @Override
@@ -375,10 +408,11 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             double value = ((Number) typedValue.getValue()).doubleValue();
             return new TypedValue(INT, toInt(value == 0));
         }
-        return new EvaluateError("expect a number");
+        return new EvaluateError("expected a number");
     }
 
     protected static int toInt(boolean isTrue) {
         return isTrue ? 1 : 0;
     }
+
 }

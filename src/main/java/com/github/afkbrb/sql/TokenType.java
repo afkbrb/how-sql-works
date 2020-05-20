@@ -42,6 +42,7 @@ public enum TokenType {
     DESC,
     DOUBLE,
     DROP,
+    EXISTS,
     FALSE,
     FROM,
     GROUP,
@@ -86,6 +87,7 @@ public enum TokenType {
         keywords.put("DESC", DESC);
         keywords.put("DOUBLE", DOUBLE);
         keywords.put("DROP", DROP);
+        keywords.put("EXISTS", EXISTS);
         keywords.put("FALSE", FALSE);
         keywords.put("FROM", FROM);
         keywords.put("GROUP", GROUP);

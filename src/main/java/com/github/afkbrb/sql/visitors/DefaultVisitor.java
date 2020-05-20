@@ -201,6 +201,12 @@ public class DefaultVisitor<T> implements Visitor<T> {
     }
 
     @Override
+    public T visit(SubQueryExpression node) {
+        node.getSubQuery().accept(this);
+        return null;
+    }
+
+    @Override
     public T visit(OrExpression node) {
         node.getLeft().accept(this);
         node.getRight().accept(this);

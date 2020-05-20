@@ -57,7 +57,7 @@ public class SelectExecutor extends Executor {
         // FROM tableReference
         Table referenceTable = makeReferenceTable(selectStatement.getTableReference());
         Schema schema = referenceTable.getSchema();
-        List<Row> rows = referenceTable.getRows();
+        List<Row> rows = new ArrayList<>(referenceTable.getRows());
 
         if (selectStatement.getWhereCondition() != null) {
             for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
@@ -277,7 +277,7 @@ public class SelectExecutor extends Executor {
      * 根据 table reference 生成一张虚表。
      */
     private Table makeReferenceTable(TableReference tableReference) throws SQLExecuteException {
-        if (tableReference == null) return Table.DUMMY_TABLE;
+        if (tableReference == null) return Table.dummyTable();
 
         if (tableReference instanceof TableJoin) {
             TableJoin tableJoin = (TableJoin) tableReference;
@@ -287,7 +287,7 @@ public class SelectExecutor extends Executor {
             String tableName = realTableFactor.getTableName();
             Table table = TableManager.getInstance().getTable(tableName);
             if (table == null) {
-                throw new SQLExecuteException("Cannot find table %s", tableName);
+                throw new SQLExecuteException("cannot find table %s", tableName);
             }
             String alias = realTableFactor.getTableNameAlias();
             if (alias == null) alias = tableName;

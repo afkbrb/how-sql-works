@@ -96,7 +96,7 @@ public class Lexer {
                 }
             case '!': // 仅支持 !=
                 if (nextChar() != '=') {
-                    throw new SQLParseException("expect '=' after '!'");
+                    throw new SQLParseException("expected '=' after '!'");
                 } else {
                     return new Token(NE, "!=");
                 }
@@ -163,7 +163,7 @@ public class Lexer {
             next = nextChar();
 
             if (!isDigit(next)) {
-                throw new SQLParseException("expect a digit after '.'");
+                throw new SQLParseException("expected a digit after '.'");
             }
 
             while (isDigit(next)) {

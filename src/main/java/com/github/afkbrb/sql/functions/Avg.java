@@ -6,14 +6,18 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-import static com.github.afkbrb.sql.model.DataType.DOUBLE;
 import static com.github.afkbrb.sql.utils.DataTypeUtils.isNumber;
 
-public class Max implements Function {
+public class Avg implements Function {
 
     @Override
     public String getName() {
-        return "max";
+        return "avg";
+    }
+
+    @Override
+    public DataType getReturnType() {
+        return DataType.DOUBLE;
     }
 
     @Override
@@ -22,23 +26,17 @@ public class Max implements Function {
     }
 
     @Override
-    public DataType getReturnType() {
-        return DOUBLE;
-    }
-
-    @Override
     public TypedValue call(@NotNull List<TypedValue> arguments) {
-        Double max = null;
+        double sum = 0.0;
+        int counter = 0;
         for (TypedValue typedValue : arguments) {
             if (isNumber(typedValue)) {
                 double doubleValue = ((Number) typedValue.getValue()).doubleValue();
-                if (max == null) {
-                    max = doubleValue;
-                } else if (doubleValue > max) {
-                    max = doubleValue;
-                }
+                sum += doubleValue;
+                counter++;
             }
         }
-        return max == null ? TypedValue.NULL : new TypedValue(DOUBLE, max);
+
+        return counter == 0 ? TypedValue.NULL : new TypedValue(DataType.DOUBLE, sum / counter);
     }
 }

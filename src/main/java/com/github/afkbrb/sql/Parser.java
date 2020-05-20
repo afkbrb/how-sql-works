@@ -73,7 +73,7 @@ public class Parser {
             case DELETE:
                 return deleteStatement();
             default:
-                throw new SQLParseException("expect CREATE/DROP/INSERT/SELECT/UPDATE/DELETE, but get " + token);
+                throw new SQLParseException("expected CREATE/DROP/INSERT/SELECT/UPDATE/DELETE, but got " + token);
         }
     }
 
@@ -164,8 +164,9 @@ public class Parser {
      * <pre>
      * selectStatement
      *     : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)* \
-     *     (FROM tableReference)? (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)? \
-     *     (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?
+     *     (FROM tableReference (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)? \
+     *     (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?)?
+     *     // 最后一个 )? 指 FROM 及后面的从句都可以省略
      * ;
      * </pre>
      */
@@ -179,11 +180,11 @@ public class Parser {
             selectItemList.add(new Pair<>(expression(), alias()));
         }
 
-        TableReference tableReference = null;
-        if (lexer.current().getType() == FROM) {
-            match(FROM);
-            tableReference = tableReference();
-        }
+        if (lexer.current().getType() != FROM) return new SelectStatement(selectItemList,
+                null, null, null, null, null);
+
+        match(FROM);
+        TableReference tableReference = tableReference();
 
         Expression whereCondition = null;
         if (lexer.current().getType() == WHERE) {
@@ -575,6 +576,7 @@ public class Parser {
      *     | IDENTIFIER DOT IDENTIFIER // tableName.columnName
      *     | IDENTIFIER // columnName
      *     | IDENTIFIER OPEN_PAR (expr (COMMA expr)*)? CLOSE_PAR // 函数调用
+     *     | EXISTS? selectStatement // 子查询
      *     | OPEN_PAR expr CLOSE_PAR
      * ;
      * </pre>
@@ -626,13 +628,25 @@ public class Parser {
                 } else {
                     return new ColumnNameExpression(identifier);
                 }
+            case EXISTS:
+                match(EXISTS);
+                match(OPEN_PAR);
+                SelectStatement subQuery = selectStatement();
+                match(CLOSE_PAR);
+                return new SubQueryExpression(true, subQuery);
             case OPEN_PAR:
                 match(OPEN_PAR);
-                Expression expression = expression();
-                match(CLOSE_PAR);
-                return expression;
+                if (lexer.current().getType() == SELECT) {
+                    subQuery = selectStatement();
+                    match(CLOSE_PAR);
+                    return new SubQueryExpression(false, subQuery);
+                } else {
+                    Expression expression = expression();
+                    match(CLOSE_PAR);
+                    return expression;
+                }
             default:
-                throw new SQLParseException("expect an atom expression, but get " + lexer.current());
+                throw new SQLParseException("expected an atom expression, but got " + lexer.current());
         }
     }
 
@@ -657,7 +671,7 @@ public class Parser {
                 return current;
             }
         }
-        throw new SQLParseException("expect " + Arrays.toString(tokenTypes) + " but get " + current);
+        throw new SQLParseException("expected " + Arrays.toString(tokenTypes) + " but got " + current);
     }
 
     private static DataType tokenTypeToDataType(TokenType tokenType) throws SQLParseException {
@@ -669,7 +683,7 @@ public class Parser {
             case STRING:
                 return DataType.STRING;
             default:
-                throw new SQLParseException("expect INT/DOUBLE/TEXT, but get " + tokenType);
+                throw new SQLParseException("expected INT/DOUBLE/TEXT, but got " + tokenType);
         }
     }
 
@@ -696,7 +710,7 @@ public class Parser {
             case NE:
                 return BinaryExpression.BinaryOperatorType.NE;
             default:
-                throw new SQLParseException("expect a binary operator type, but get " + tokenType);
+                throw new SQLParseException("expected a binary operator type, but got " + tokenType);
         }
     }
 
@@ -707,7 +721,7 @@ public class Parser {
             case MINUS:
                 return UnaryExpression.UnaryOperationType.MINUS;
             default:
-                throw new SQLParseException("expect a unary operator type, but get " + tokenType);
+                throw new SQLParseException("expected a unary operator type, but got " + tokenType);
         }
     }
 
