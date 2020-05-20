@@ -3,16 +3,16 @@ package com.github.afkbrb.sql.ast.expressions;
 import com.github.afkbrb.sql.visitors.ToStringVisitor;
 import com.github.afkbrb.sql.visitors.Visitor;
 
-public class IdentifierExpression implements Expression {
+public class StringExpression implements Expression {
 
-    private final String identifier;
+    private final String text;
 
-    public IdentifierExpression(String identifier) {
-        this.identifier = identifier;
+    public StringExpression(String text) {
+        this.text = text;
     }
 
-    public String getIdentifier() {
-        return identifier;
+    public String getText() {
+        return text;
     }
 
     @Override

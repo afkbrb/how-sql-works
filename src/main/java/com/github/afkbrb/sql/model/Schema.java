@@ -1,5 +1,6 @@
 package com.github.afkbrb.sql.model;
 
+import com.github.afkbrb.sql.SQLExecuteException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -7,65 +8,58 @@ import java.util.*;
 
 public class Schema {
 
-    private final Map<String, List<Column>> nameToColumnList = new HashMap<>();
-    private final List<Column> columnList;
+    // 多个列可能拥有相同的名字，所以此处使用了 list
+    private final Map<String, List<Column>> nameToColumns = new HashMap<>();
+    private final List<Column> columns;
 
-    public Schema(@NotNull List<Column> columnList) {
-        this.columnList = Objects.requireNonNull(columnList);
-        for (Column column : columnList) {
-            nameToColumnList.putIfAbsent(column.getColumnName().toLowerCase(), new ArrayList<>());
-            nameToColumnList.get(column.getColumnName().toLowerCase()).add(column);
+    public static final Schema EMPTY_SCHEMA = new Schema(Collections.emptyList());
+
+    public Schema(@NotNull List<Column> columns) {
+        this.columns = Objects.requireNonNull(columns);
+        for (Column column : columns) {
+            nameToColumns.putIfAbsent(column.getColumnName().toLowerCase(), new ArrayList<>());
+            nameToColumns.get(column.getColumnName().toLowerCase()).add(column);
         }
     }
 
-    public int getColumnCount() {
-        return nameToColumnList.size();
-    }
-
     @Nullable
-    public Column getColumn(String columnName) {
-        if (columnName.contains(".")) {
-            // 如果 columnName 可能是 tableName.columnName 的形式
-            String[] split = columnName.split("\\.");
-            if (split.length != 2) throw new IllegalArgumentException("invalid columnName " + columnName);
-            String tableName = split[0];
-            String columnName1 = split[1];
-            List<Column> columnList = nameToColumnList.get(columnName1.toLowerCase());
-            if (columnList == null) return null;
+    public Column getColumn(@NotNull String tableName, @NotNull String columnName) throws SQLExecuteException {
+        Objects.requireNonNull(tableName);
+        Objects.requireNonNull(columnName);
+        List<Column> columnList = nameToColumns.get(columnName.toLowerCase());
+        if (columnList != null) {
+            Column result = null;
             for (Column column : columnList) {
-                if (column.getTableAlias().equalsIgnoreCase(tableName)) return column;
+                if (column.getTableName().equalsIgnoreCase(tableName)) {
+                    if (result == null) {
+                        result = column;
+                    } else {
+                        throw new SQLExecuteException("Column '%s.%s' in field list is ambiguous", tableName, column);
+                    }
+                }
             }
-            return null;
-        } else {
-            List<Column> columnList = nameToColumnList.get(columnName);
-            if (columnList == null) return null;
-            if (columnList.size() > 1)
-                throw new IllegalArgumentException(String.format("column '%s' in field list is ambiguous", columnName));
-            return columnList.get(0);
-        }
-    }
-
-    public int getColumnIndex(String columnName) {
-        Column column = getColumn(columnName);
-        if (column == null) return -1;
-        return column.getColumnIndex();
-    }
-
-    @Nullable
-    public DataType getColumnType(String columnName) {
-        Column column = getColumn(columnName);
-        if (column == null) return null;
-        return column.getDataType();
-    }
-
-    public DataType getColumnType(int index) {
-        if (index >= 0 && index < columnList.size()) {
-            return columnList.get(index).getDataType();
+            return result;
         }
         return null;
     }
 
-    public List<Column> getColumnList() {
-        return columnList;
+    @Nullable
+    public Column getColumn(@NotNull String columnName) throws SQLExecuteException {
+        Objects.requireNonNull(columnName);
+        List<Column> columnList = nameToColumns.get(columnName);
+        if (columnList == null) return null;
+        if (columnList.size() > 1)
+            throw new SQLExecuteException(String.format("Column '%s' in field list is ambiguous", columnName));
+        return columnList.get(0);
     }
+
+    @NotNull
+    public List<Column> getColumns() {
+        return columns;
+    }
+
+    public int size() {
+        return nameToColumns.size();
+    }
+
 }

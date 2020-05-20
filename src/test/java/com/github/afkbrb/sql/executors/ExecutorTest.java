@@ -36,7 +36,7 @@ public class ExecutorTest {
                 DeleteExecutor.doDelete(parser.deleteStatement());
                 break;
             case "select":
-                SelectExecutor.doSelect(parser.selectStatement());
+                new SelectExecutor().doSelect(parser.selectStatement());
                 break;
             default:
                 throw new IllegalArgumentException("unexpected action " + action);

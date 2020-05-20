@@ -13,6 +13,7 @@ import static com.github.afkbrb.sql.model.DataType.*;
 public class UpdateExecutorTest extends ExecutorTest {
 
     @Test
+    @SuppressWarnings("all")
     public void test() throws SQLParseException, SQLExecuteException {
         execute("create table student (id int, name string, age int, grade double)");
         execute("insert into student values (1, 'squanchy', 20, 90.01)");

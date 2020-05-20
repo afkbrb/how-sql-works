@@ -6,16 +6,16 @@ import java.util.Objects;
 
 public class Column {
 
-    private int columnIndex;
-    private String columnName;
-    private DataType dataType;
-    private String tableAlias;
+    private final int columnIndex;
+    private final String columnName;
+    private final DataType dataType;
+    private final String tableName;
 
-    public Column(int columnIndex, @NotNull String columnName, @NotNull DataType dataType, @NotNull String tableAlias) {
+    public Column(int columnIndex, @NotNull String columnName, @NotNull DataType dataType, @NotNull String tableName) {
         this.columnIndex = columnIndex;
         this.columnName = Objects.requireNonNull(columnName);
         this.dataType = Objects.requireNonNull(dataType);
-        this.tableAlias = Objects.requireNonNull(tableAlias);
+        this.tableName = Objects.requireNonNull(tableName);
     }
 
     public int getColumnIndex() {
@@ -33,12 +33,8 @@ public class Column {
     }
 
     @NotNull
-    public String getTableAlias() {
-        return tableAlias;
-    }
-
-    public void setTableAlias(@NotNull String tableAlias) {
-        this.tableAlias = Objects.requireNonNull(tableAlias);
+    public String getTableName() {
+        return tableName;
     }
 
     @Override
@@ -47,7 +43,7 @@ public class Column {
                 "\"index\": " + columnIndex + ", " +
                 "\"name\": " + "\"" + columnName + "\"" + ", " +
                 "\"type\": " + "\"" + dataType + "\"" + ", " +
-                "\"tableAlias\": " + "\"" + tableAlias + "\"" +
+                "\"tableAlias\": " + "\"" + tableName + "\"" +
                 "}";
     }
 }

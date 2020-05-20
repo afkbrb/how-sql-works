@@ -2,9 +2,10 @@ package com.github.afkbrb.sql.executors;
 
 import com.github.afkbrb.sql.SQLExecuteException;
 import com.github.afkbrb.sql.TableManager;
+import com.github.afkbrb.sql.ast.expressions.ColumnNameExpression;
 import com.github.afkbrb.sql.ast.expressions.Expression;
-import com.github.afkbrb.sql.ast.expressions.IdentifierExpression;
 import com.github.afkbrb.sql.ast.expressions.IntExpression;
+import com.github.afkbrb.sql.ast.expressions.WildcardExpression;
 import com.github.afkbrb.sql.ast.statements.SelectStatement;
 import com.github.afkbrb.sql.ast.statements.SelectStatement.*;
 import com.github.afkbrb.sql.model.*;
@@ -21,12 +22,26 @@ import static com.github.afkbrb.sql.utils.DataTypeUtils.isNull;
 
 public class SelectExecutor extends Executor {
 
+    private final InheritedContext context;
+
+    public SelectExecutor() {
+        this(new InheritedContext());
+    }
+
+    public SelectExecutor(@NotNull InheritedContext context) {
+        this.context = Objects.requireNonNull(context);
+    }
+
+    public Table doSelect(SelectStatement selectStatement) throws SQLExecuteException {
+        return doSelect(selectStatement, "result");
+    }
+
     /**
      * 处理 select 比较麻烦，需要考虑多种情况。
-     * <p>
-     * TODO: distinct, all
      */
-    public static Table doSelect(SelectStatement selectStatement) throws SQLExecuteException {
+    public Table doSelect(@NotNull SelectStatement selectStatement, @NotNull String tableName) throws SQLExecuteException {
+        Objects.requireNonNull(selectStatement);
+        Objects.requireNonNull(tableName);
         List<Pair<Expression, String>> originalSelectItemList = selectStatement.getSelectItemList();
 
         // 主要是针对 group by 语句和聚集函数的存在与否分类处理
@@ -46,7 +61,7 @@ public class SelectExecutor extends Executor {
 
         if (selectStatement.getWhereCondition() != null) {
             for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
-                if (!predict(iterator.next(), schema, selectStatement.getWhereCondition())) iterator.remove();
+                if (!predict(context, schema, iterator.next(), selectStatement.getWhereCondition())) iterator.remove();
             }
         }
 
@@ -54,27 +69,21 @@ public class SelectExecutor extends Executor {
         List<Pair<Expression, String>> selectItemList = new ArrayList<>();
         for (Pair<Expression, String> pair : originalSelectItemList) {
             Expression expression = pair.getKey();
-            if (expression instanceof IdentifierExpression && ((IdentifierExpression) expression).getIdentifier().contains("*")) {
-                String identifier = ((IdentifierExpression) expression).getIdentifier();
-                List<Column> columnList = schema.getColumnList();
-                if (!identifier.equals("*")) {
+            if (expression instanceof WildcardExpression) {
+                WildcardExpression wildcardExpression = (WildcardExpression) expression;
+                List<Column> columnList = schema.getColumns();
+                if (wildcardExpression.getTableName() != null) {
                     // tableName.*
-                    // TODO：返现 tableAlias 对应的 table 不存在的话应该报错
-                    String[] split = identifier.split("\\.");
-                    if (split.length != 2) error("invalid wildcard expression %s", identifier);
-                    columnList = columnList.stream().filter(column -> column.getTableAlias().equalsIgnoreCase(split[0])).collect(Collectors.toList());
+                    columnList = columnList.stream().filter(column -> column.getTableName().equalsIgnoreCase(wildcardExpression.getTableName())).collect(Collectors.toList());
                 }
-                columnList.forEach(column -> selectItemList.add(new Pair<>(new IdentifierExpression(column.getTableAlias() + "." + column.getColumnName()), column.getColumnName())));
+                columnList.forEach(column -> selectItemList.add(new Pair<>(new ColumnNameExpression(column.getTableName(), column.getColumnName()), column.getColumnName())));
             } else {
                 // 别名处理
                 if (pair.getValue() == null) {
                     // 没有别名就自动生成别名
-                    if (expression instanceof IdentifierExpression && ((IdentifierExpression) expression).getIdentifier().contains(".")) {
+                    if (expression instanceof ColumnNameExpression && ((ColumnNameExpression) expression).getTableName() != null) {
                         // 如果没有指定别名且列名为 tableName.columnName 的形式
-                        String identifier = ((IdentifierExpression) expression).getIdentifier();
-                        String[] split = identifier.split("\\.");
-                        if (split.length != 2) error("invalid column name %s", identifier);
-                        selectItemList.add(new Pair<>(expression, split[1]));
+                        selectItemList.add(new Pair<>(expression, ((ColumnNameExpression) expression).getColumnName()));
                     } else {
                         selectItemList.add(new Pair<>(expression, ExpressionUtils.trimParenthesis(expression)));
                     }
@@ -92,33 +101,32 @@ public class SelectExecutor extends Executor {
         List<Column> columnList = new ArrayList<>();
         for (int i = 0; i < selectItemList.size(); i++) {
             Pair<Expression, String> pair = selectItemList.get(i);
-            String columnAlias = pair.getValue();
             DataType dataType = inferType(schema, pair.getKey());
             // 如果是 derived table 的话，这边的别名会被子其别名覆盖
-            Column column = new Column(i, columnAlias, dataType, "result");
+            Column column = new Column(i, pair.getValue(), dataType, tableName);
             columnList.add(column);
         }
-        Table table = new Table("result", columnList);
+        Table table = new Table(tableName, columnList);
 
         int limit = Integer.MAX_VALUE;
         int offset = 0;
         if (selectStatement.getLimit() != null) {
-            TypedValue evaluatedLimit = evaluate(selectStatement.getLimit().getLimitExpression());
+            TypedValue evaluatedLimit = evaluate(context, selectStatement.getLimit().getLimitExpression());
             if (!(evaluatedLimit.getValue() instanceof Integer)) {
-                error("expected a integer result of evaluate");
+                throw new SQLExecuteException("expected a integer result of evaluate");
             }
             limit = (int) evaluatedLimit.getValue();
             if (limit < 0) {
-                error("expected limit >= 0");
+                throw new SQLExecuteException("expected limit >= 0");
             }
             if (selectStatement.getLimit().getOffsetExpression() != null) {
-                TypedValue evaluatedOffset = evaluate(selectStatement.getLimit().getOffsetExpression());
+                TypedValue evaluatedOffset = evaluate(context, selectStatement.getLimit().getOffsetExpression());
                 if (!(evaluatedOffset.getValue() instanceof Integer)) {
-                    error("expected a integer result of evaluate");
+                    throw new SQLExecuteException("expected a integer result of evaluate");
                 }
                 offset = (int) evaluatedOffset.getValue();
                 if (offset < 0) {
-                    error("expected offset >= 0");
+                    throw new SQLExecuteException("expected offset >= 0");
                 }
             }
         }
@@ -139,17 +147,17 @@ public class SelectExecutor extends Executor {
                 Row row = rows.get(i);
                 List<Cell> cells = new ArrayList<>();
                 for (Expression expression : selectExpressionList) {
-                    TypedValue value = evaluate(row, schema, expression);
+                    TypedValue value = evaluate(context, schema, row, expression);
                     cells.add(new Cell(value));
                 }
                 table.addRow(new Row(cells));
             }
         } else if (!isGroupBy) {
-            // 使用了聚集函数的话，只有一行记录
+            // 没有 group by，但使用了聚集函数的话，只有一行记录
             if (!(limit > 0 && offset == 0)) return table;
             List<Cell> cells = new ArrayList<>();
             for (Expression expression : selectExpressionList) {
-                cells.add(new Cell(evaluate(rows, schema, expression)));
+                cells.add(new Cell(evaluate(context, schema, rows, expression)));
             }
             table.addRow(new Row(cells));
         } else {
@@ -163,7 +171,7 @@ public class SelectExecutor extends Executor {
             for (Row row : rows) {
                 List<TypedValue> items = new ArrayList<>();
                 for (Expression expression : groupByList) {
-                    items.add(evaluate(row, schema, expression));
+                    items.add(evaluate(context, schema, row, expression));
                 }
                 Group group = new Group(items);
                 groupMap.putIfAbsent(group, new ArrayList<>());
@@ -172,7 +180,8 @@ public class SelectExecutor extends Executor {
 
             if (groupBy.getHavingCondition() != null) {
                 for (Iterator<Map.Entry<Group, List<Row>>> iterator = groupMap.entrySet().iterator(); iterator.hasNext(); ) {
-                    if (!predict(iterator.next().getValue(), schema, groupBy.getHavingCondition())) iterator.remove();
+                    if (!predict(context, schema, iterator.next().getValue(), groupBy.getHavingCondition()))
+                        iterator.remove();
                 }
             }
 
@@ -190,7 +199,7 @@ public class SelectExecutor extends Executor {
                 List<Row> groupRows = groupEntryList.get(i).getValue();
                 List<Cell> cells = new ArrayList<>();
                 for (Expression expression : selectExpressionList) {
-                    TypedValue value = evaluate(groupRows, schema, expression);
+                    TypedValue value = evaluate(context, schema, groupRows, expression);
                     cells.add(new Cell(value));
                 }
                 table.addRow(new Row(cells));
@@ -203,7 +212,7 @@ public class SelectExecutor extends Executor {
     /**
      * 判断一个 expression 中是否调用了聚集函数
      */
-    private static boolean isAggregate(Expression expression) {
+    private boolean isAggregate(Expression expression) {
         AggregateDetector detector = new AggregateDetector(expression);
         return detector.detect();
     }
@@ -211,18 +220,17 @@ public class SelectExecutor extends Executor {
     /**
      * 推导 expression 的类型
      */
-    private static DataType inferType(Schema schema, Expression expression) {
-        TypeInferer inferer = new TypeInferer(schema);
+    private DataType inferType(Schema schema, Expression expression) {
+        TypeInferer inferer = new TypeInferer(context, schema);
         return inferer.infer(expression);
     }
 
-    // TODO 处理 NULL
-    private static void sortRows(List<Row> rows, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
+    private void sortRows(List<Row> rows, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
         Double[] valueArr = new Double[rows.size()];
         Integer[] indexMap = new Integer[rows.size()]; // 用 int/double 无法使用 sort(T[] a, Comparator<? super T> c)
         for (int i = 0; i < valueArr.length; i++) {
             indexMap[i] = i;
-            TypedValue typedValue = evaluate(rows.get(i), schema, expression);
+            TypedValue typedValue = evaluate(context, schema, rows.get(i), expression);
             if (isNull(typedValue)) {
                 valueArr[i] = 0.0; // 将 NULL 当 0 处理
             } else {
@@ -241,12 +249,12 @@ public class SelectExecutor extends Executor {
         }
     }
 
-    private static void sortGroup(List<Map.Entry<Group, List<Row>>> groupEntryList, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
+    private void sortGroup(List<Map.Entry<Group, List<Row>>> groupEntryList, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
         Double[] valueArr = new Double[groupEntryList.size()];
         Integer[] indexMap = new Integer[groupEntryList.size()]; // 用 int/double 无法使用 sort(T[] a, Comparator<? super T> c)
         for (int i = 0; i < valueArr.length; i++) {
             indexMap[i] = i;
-            TypedValue typedValue = evaluate(groupEntryList.get(i).getValue(), schema, expression);
+            TypedValue typedValue = evaluate(context, schema, groupEntryList.get(i).getValue(), expression);
             if (isNull(typedValue)) {
                 valueArr[i] = 0.0; // 将 NULL 当 0 处理
             } else {
@@ -268,7 +276,7 @@ public class SelectExecutor extends Executor {
     /**
      * 根据 table reference 生成一张虚表。
      */
-    private static Table makeReferenceTable(TableReference tableReference) throws SQLExecuteException {
+    private Table makeReferenceTable(TableReference tableReference) throws SQLExecuteException {
         if (tableReference == null) return Table.DUMMY_TABLE;
 
         if (tableReference instanceof TableJoin) {
@@ -279,12 +287,12 @@ public class SelectExecutor extends Executor {
             String tableName = realTableFactor.getTableName();
             Table table = TableManager.getInstance().getTable(tableName);
             if (table == null) {
-                error("cannot find table %s", tableName);
+                throw new SQLExecuteException("Cannot find table %s", tableName);
             }
             String alias = realTableFactor.getTableNameAlias();
             if (alias == null) alias = tableName;
 
-            // 此时需要复制表（浅拷贝，rows 不变，主要是修改 column 信息），因为我们会修改别名
+            // 此时需要复制表，因为我们会修改别名
             List<Column> columnList = table.getColumns();
             List<Column> newColumnList = new ArrayList<>();
             for (int i = 0; i < columnList.size(); i++) {
@@ -294,18 +302,15 @@ public class SelectExecutor extends Executor {
             }
             Table newTable = new Table(tableName, newColumnList);
             // 不能是 getRows，否则执行 where 子句进行过滤时会把原表的数据给删了
-            newTable.setRows(table.copyRows());
+            newTable.addRows(table.getRows());
             return newTable;
-        } else { // SubQueryFactor
-            SubQueryFactor subQueryFactor = (SubQueryFactor) tableReference;
-            Table table = doSelect(subQueryFactor.getSelectStatement());
-            // 设置子查询别名
-            table.getColumns().forEach(column -> column.setTableAlias(subQueryFactor.getAlias() == null ? "derived_table" : subQueryFactor.getAlias()));
-            return table;
+        } else { // derived table
+            DerivedTable derivedTable = (DerivedTable) tableReference;
+            return new SelectExecutor(context).doSelect(derivedTable.getSelectStatement(), derivedTable.getAlias());
         }
     }
 
-    private static Table doJoin(TableJoin tableJoin) throws SQLExecuteException {
+    private Table doJoin(TableJoin tableJoin) throws SQLExecuteException {
         Table left = makeReferenceTable(tableJoin.getLeft());
         Table right = makeReferenceTable(tableJoin.getRight());
 
@@ -316,13 +321,13 @@ public class SelectExecutor extends Executor {
         for (int i = 0; i < leftColumnList.size(); i++) {
             Column column = leftColumnList.get(i);
             Column newColumn = new Column(i, column.getColumnName(),
-                    column.getDataType(), column.getTableAlias());
+                    column.getDataType(), column.getTableName());
             newColumnList.add(newColumn);
         }
         for (int i = 0; i < rightColumnList.size(); i++) {
             Column column = rightColumnList.get(i);
             Column newColumn = new Column(leftColumnList.size() + i,
-                    column.getColumnName(), column.getDataType(), column.getTableAlias());
+                    column.getColumnName(), column.getDataType(), column.getTableName());
             newColumnList.add(newColumn);
         }
 
@@ -342,7 +347,7 @@ public class SelectExecutor extends Executor {
                 newCells.addAll(leftRow.getCells());
                 newCells.addAll(rightRow.getCells());
                 Row newRow = new Row(newCells);
-                if (predict(newRow, schema, condition)) {
+                if (predict(context, schema, newRow, condition)) {
                     newTable.addRow(newRow);
                     needLeftJoin[i] = false;
                 }

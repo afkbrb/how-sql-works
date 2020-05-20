@@ -1,10 +1,10 @@
 package com.github.afkbrb.sql.visitors;
 
+import com.github.afkbrb.sql.SQLExecuteException;
 import com.github.afkbrb.sql.ast.expressions.*;
 import com.github.afkbrb.sql.functions.Function;
 import com.github.afkbrb.sql.functions.FunctionRegistry;
-import com.github.afkbrb.sql.model.DataType;
-import com.github.afkbrb.sql.model.Schema;
+import com.github.afkbrb.sql.model.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -13,14 +13,16 @@ import static com.github.afkbrb.sql.model.DataType.*;
 
 /**
  * 类型推导器
- *
+ * <p>
  * 推导建立在表达式合法的基础上，如果非法的话会在实际执行时报错。
  */
 public class TypeInferer extends DefaultVisitor<DataType> {
 
+    private final InheritedContext context;
     private final Schema schema;
 
-    public TypeInferer(@NotNull Schema schema) {
+    public TypeInferer(@NotNull InheritedContext context, @NotNull Schema schema) {
+        this.context = Objects.requireNonNull(context);
         this.schema = Objects.requireNonNull(schema);
     }
 
@@ -47,12 +49,6 @@ public class TypeInferer extends DefaultVisitor<DataType> {
     }
 
     @Override
-    public DataType visit(IdentifierExpression node) {
-        DataType columnType = schema.getColumnType(node.getIdentifier());
-        return columnType == null ? ERROR : columnType;
-    }
-
-    @Override
     public DataType visit(InListExpression node) {
         return INT;
     }
@@ -73,13 +69,41 @@ public class TypeInferer extends DefaultVisitor<DataType> {
     }
 
     @Override
-    public DataType visit(TextExpression node) {
+    public DataType visit(StringExpression node) {
         return STRING;
     }
 
     @Override
     public DataType visit(NullExpression node) {
         return NULL;
+    }
+
+    @Override
+    public DataType visit(ColumnNameExpression node) {
+        try {
+            if (node.getTableName() == null) {
+                Column column = schema.getColumn(node.getColumnName());
+                if (column == null) {
+                    TypedValue typedValue = context.getTypedValue(node.getColumnName());
+                    if (typedValue == null) return ERROR;
+                    else return typedValue.getDataType();
+                } else {
+                    return column.getDataType();
+                }
+            } else {
+                Column column = schema.getColumn(node.getTableName(), node.getColumnName());
+                if (column == null) {
+                    TypedValue typedValue = context.getTypedValue(node.getTableName(), node.getColumnName());
+                    if (typedValue == null) return ERROR;
+                    else return typedValue.getDataType();
+                } else {
+                    return column.getDataType();
+                }
+            }
+        } catch (SQLExecuteException e) {
+            e.printStackTrace();
+            return ERROR;
+        }
     }
 
     @Override

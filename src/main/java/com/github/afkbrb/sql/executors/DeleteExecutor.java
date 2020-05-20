@@ -18,7 +18,7 @@ public class DeleteExecutor extends Executor {
         List<Row> rows = table.getRows();
         Expression condition = deleteStatement.getWhereCondition() == null ? new IntExpression(1) : deleteStatement.getWhereCondition();
         for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
-            if (predict(iterator.next(), table.getSchema(), condition)) iterator.remove();
+            if (predict(table.getSchema(), iterator.next(), condition)) iterator.remove();
         }
     }
 }

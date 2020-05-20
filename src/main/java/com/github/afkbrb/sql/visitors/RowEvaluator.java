@@ -2,12 +2,10 @@ package com.github.afkbrb.sql.visitors;
 
 import com.github.afkbrb.sql.ast.expressions.Expression;
 import com.github.afkbrb.sql.ast.expressions.FunctionCallExpression;
-import com.github.afkbrb.sql.model.EvaluateError;
 import com.github.afkbrb.sql.functions.Function;
 import com.github.afkbrb.sql.functions.FunctionRegistry;
-import com.github.afkbrb.sql.model.Row;
-import com.github.afkbrb.sql.model.Schema;
-import com.github.afkbrb.sql.model.TypedValue;
+import com.github.afkbrb.sql.model.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -18,15 +16,16 @@ import static com.github.afkbrb.sql.utils.DataTypeUtils.isError;
 
 public class RowEvaluator extends AbstractEvaluator {
 
-    public RowEvaluator(@Nullable Row row, @Nullable Schema schema) {
-        super(row, schema);
+    public RowEvaluator(@Nullable InheritedContext context, @NotNull Schema schema, @NotNull Row row) {
+        super(context, schema, row);
     }
 
     @Override
     public TypedValue visit(FunctionCallExpression node) {
         Function function = FunctionRegistry.getFunction(node.getFunctionName());
-        if (function == null) return new EvaluateError("function %s not found", node.getFunctionName());
-        if (function.isAggregate()) return new EvaluateError("unexpected aggregate function call");
+        if (function == null) return new EvaluateError("Function %s not found", node.getFunctionName());
+        if (function.isAggregate())
+            return new EvaluateError("Invalid use of aggregate function %s", node.getFunctionName());
 
         List<TypedValue> arguments = new ArrayList<>();
         for (Expression expression : node.getArgumentList()) {

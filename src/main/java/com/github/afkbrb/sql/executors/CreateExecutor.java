@@ -11,10 +11,12 @@ import java.util.List;
 
 public class CreateExecutor extends Executor {
 
+
+
     /**
      * 根据 CreateStatement 创建一个表
      */
-    public static Table doCreate(CreateStatement createStatement) throws SQLExecuteException {
+    public static void doCreate(CreateStatement createStatement) throws SQLExecuteException {
         String tableName = createStatement.getTableName();
         requireTableNotExists(tableName);
 
@@ -28,6 +30,5 @@ public class CreateExecutor extends Executor {
 
         Table table = new Table(tableName, columnList);
         TableManager.getInstance().addTable(table);
-        return table;
     }
 }

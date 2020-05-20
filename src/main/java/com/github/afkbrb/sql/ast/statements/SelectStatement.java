@@ -16,7 +16,6 @@ import java.util.Objects;
  */
 public class SelectStatement extends Statement implements Expression {
 
-    private final SelectOption selectOption;
     private final List<Pair<Expression, String>> selectItemList;
     private final TableReference tableReference;
     private final Expression whereCondition;
@@ -24,21 +23,15 @@ public class SelectStatement extends Statement implements Expression {
     private final OrderBy orderBy;
     private final Limit limit;
 
-    public SelectStatement(@Nullable SelectOption selectOption, @NotNull List<Pair<Expression, String>> selectItemList,
+    public SelectStatement(@NotNull List<Pair<Expression, String>> selectItemList,
                            @Nullable TableReference tableReference, @Nullable Expression whereCondition,
                            @Nullable GroupBy groupBy, @Nullable OrderBy orderBy, @Nullable Limit limit) {
-        this.selectOption = selectOption;
         this.selectItemList = Objects.requireNonNull(selectItemList);
         this.tableReference = tableReference;
         this.whereCondition = whereCondition;
         this.groupBy = groupBy;
         this.orderBy = orderBy;
         this.limit = limit;
-    }
-
-    @Nullable
-    public SelectOption getSelectOption() {
-        return selectOption;
     }
 
     @NotNull
@@ -225,14 +218,14 @@ public class SelectStatement extends Statement implements Expression {
         }
     }
 
-    public static class SubQueryFactor implements TableReference {
+    public static class DerivedTable implements TableReference {
 
         private final SelectStatement selectStatement;
         private final String alias;
 
-        public SubQueryFactor(@NotNull SelectStatement selectStatement, String alias) {
+        public DerivedTable(@NotNull SelectStatement selectStatement, @NotNull String alias) {
             this.selectStatement = Objects.requireNonNull(selectStatement);
-            this.alias = alias;
+            this.alias = Objects.requireNonNull(alias);
         }
 
         @NotNull
@@ -240,6 +233,7 @@ public class SelectStatement extends Statement implements Expression {
             return selectStatement;
         }
 
+        @NotNull
         public String getAlias() {
             return alias;
         }

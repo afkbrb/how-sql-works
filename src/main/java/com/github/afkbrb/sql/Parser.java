@@ -54,7 +54,7 @@ public class Parser {
      *     | deleteStatement
      * ;
      * </pre>
-     *
+     * <p>
      * 注意，此处不包含 ;
      */
     public Statement statement() throws SQLParseException {
@@ -163,7 +163,7 @@ public class Parser {
     /**
      * <pre>
      * selectStatement
-     *     : SELECT (ALL | DISTINCT)? expr (AS? alias)? (COMMA expr (AS? alias)?)* \
+     *     : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)* \
      *     (FROM tableReference)? (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)? \
      *     (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?
      * ;
@@ -171,11 +171,6 @@ public class Parser {
      */
     public SelectStatement selectStatement() throws SQLParseException {
         match(SELECT);
-
-        SelectOption selectOption = null;
-        if (lexer.current().getType() == ALL || lexer.current().getType() == DISTINCT) {
-            selectOption = tokenTypeToSelectOption(matchAny(ALL, DISTINCT).getType());
-        }
 
         List<Pair<Expression, String>> selectItemList = new ArrayList<>();
         selectItemList.add(new Pair<>(expression(), alias()));
@@ -252,7 +247,7 @@ public class Parser {
             limit = new Limit(limitExpression, offsetExpression);
         }
 
-        return new SelectStatement(selectOption, selectItemList, tableReference,
+        return new SelectStatement(selectItemList, tableReference,
                 whereCondition, groupBy, orderBy, limit);
     }
 
@@ -353,7 +348,7 @@ public class Parser {
      * <pre>
      * tableFactor
      *     : tableName (AS? tableNameAlias)?
-     *     | OPEN_PAR selectStatement CLOSE_PAR (AS? tableNameAlias)?
+     *     | OPEN_PAR selectStatement CLOSE_PAR AS? tableNameAlias // 要求派生表用于别名
      *     | OPEN_PAR tableReference CLOSE_PAR
      * ;
      * </pre>
@@ -369,7 +364,8 @@ public class Parser {
                 SelectStatement selectStatement = selectStatement();
                 match(CLOSE_PAR);
                 String alias = alias();
-                return new SubQueryFactor(selectStatement, alias);
+                if (alias == null) throw new SQLParseException("Every derived table must have its own alias");
+                return new DerivedTable(selectStatement, alias);
             } else {
                 TableReference tableReference = tableReference();
                 match(CLOSE_PAR);
@@ -575,7 +571,9 @@ public class Parser {
      *     | STRING_LITERAL
      *     | NULL
      *     | MULT // *
-     *     | IDENTIFIER // 包括 foo.bar 形式
+     *     | IDENTIFIER DOT MULT // tableName.*
+     *     | IDENTIFIER DOT IDENTIFIER // tableName.columnName
+     *     | IDENTIFIER // columnName
      *     | IDENTIFIER OPEN_PAR (expr (COMMA expr)*)? CLOSE_PAR // 函数调用
      *     | OPEN_PAR expr CLOSE_PAR
      * ;
@@ -590,16 +588,27 @@ public class Parser {
                 String doubleLiteral = match(DOUBLE_LITERAL).getText();
                 return new DoubleExpression(Double.parseDouble(doubleLiteral));
             case STRING_LITERAL:
-                return new TextExpression(match(STRING_LITERAL).getText());
+                return new StringExpression(match(STRING_LITERAL).getText());
             case NULL:
                 match(NULL);
                 return new NullExpression();
             case MULT:
                 match(MULT);
-                return new IdentifierExpression("*");
+                return new WildcardExpression();
             case IDENTIFIER:
                 String identifier = match(IDENTIFIER).getText();
-                if (lexer.current().getType() == OPEN_PAR) {
+                if (lexer.current().getType() == DOT) {
+                    match(DOT);
+                    if (lexer.current().getType() == MULT) {
+                        match(MULT);
+                        return new WildcardExpression(identifier);
+                    } else if (lexer.current().getType() == IDENTIFIER) {
+                        String columnName = match(IDENTIFIER).getText();
+                        return new ColumnNameExpression(identifier, columnName);
+                    } else {
+                        throw new SQLParseException("Expected */identifier");
+                    }
+                } else if (lexer.current().getType() == OPEN_PAR) {
                     match(OPEN_PAR);
                     List<Expression> argumentList = new ArrayList<>();
                     if (lexer.current().getType() == CLOSE_PAR) { // 没有参数
@@ -615,7 +624,7 @@ public class Parser {
                         return new FunctionCallExpression(identifier, argumentList);
                     }
                 } else {
-                    return new IdentifierExpression(identifier);
+                    return new ColumnNameExpression(identifier);
                 }
             case OPEN_PAR:
                 match(OPEN_PAR);
@@ -661,17 +670,6 @@ public class Parser {
                 return DataType.STRING;
             default:
                 throw new SQLParseException("expect INT/DOUBLE/TEXT, but get " + tokenType);
-        }
-    }
-
-    private static SelectOption tokenTypeToSelectOption(TokenType tokenType) throws SQLParseException {
-        switch (tokenType) {
-            case ALL:
-                return SelectOption.ALL;
-            case DISTINCT:
-                return SelectOption.DISTINCT;
-            default:
-                throw new SQLParseException("expect ALL/DISTINCT, but get " + tokenType);
         }
     }
 

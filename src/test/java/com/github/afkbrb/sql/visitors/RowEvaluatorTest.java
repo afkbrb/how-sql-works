@@ -30,7 +30,7 @@ public class RowEvaluatorTest {
         cells.add(new Cell(new TypedValue(STRING, "afk")));
         cells.add(new Cell(new TypedValue(DOUBLE, 233.3)));
         Row row = new Row(cells);
-        evaluator = new RowEvaluator(row, schema);
+        evaluator = new RowEvaluator(new InheritedContext(), schema, row);
     }
 
     @Test

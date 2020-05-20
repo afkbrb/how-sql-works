@@ -51,15 +51,15 @@ public class Lexer {
     }
 
     private Token next() throws SQLParseException {
-        int ch;
-        ch = nextChar();
-        while (isBlank(ch)) { // 忽略空白符
-            ch = nextChar();
+        int next;
+        next = nextChar();
+        while (isBlank(next)) { // 忽略空白符
+            next = nextChar();
         }
-        if (ch == -1) {
+        if (next == -1) {
             return new Token(EOF, "");
         }
-        switch (ch) {
+        switch (next) {
             case '+':
                 return new Token(ADD, "+");
             case '-':
@@ -96,13 +96,11 @@ public class Lexer {
                 }
             case '!': // 仅支持 !=
                 if (nextChar() != '=') {
-                    error("expect '=' after '!'");
+                    throw new SQLParseException("expect '=' after '!'");
                 } else {
                     return new Token(NE, "!=");
                 }
             case '\'':
-            case '"':
-                rollback();
                 return getTextLiteral();
             case '0': // 竟然写出这种代码 🙂
             case '1':
@@ -122,56 +120,55 @@ public class Lexer {
         }
     }
 
+    /**
+     * 要求所有字符串由双引号围起来。
+     */
     private Token getTextLiteral() throws SQLParseException {
-        int quote = nextChar();
-        assert quote == '\'' || quote == '"';
         StringBuilder sb = new StringBuilder();
 
-        int ch = nextChar();
-        while (ch != -1) {
-            if (ch == quote) return new Token(STRING_LITERAL, sb.toString());
+        int next = nextChar();
+        while (next != -1) {
+            if (next == '\'') return new Token(STRING_LITERAL, sb.toString());
 
-            if (ch == '\\') { // 处理对引号的转义
+            if (next == '\\') { // 处理对引号的转义
                 int t = nextChar();
                 if (t == -1) {
-                    error("unexpected EOF");
-                } else if (t == quote) {
-                    sb.append((char) quote);
+                    throw new SQLParseException("unexpected EOF");
+                } else if (t == '\'') {
+                    sb.append('\'');
                 } else {
                     sb.append('\\');
                     sb.append((char) t);
                 }
             } else {
-                sb.append((char) ch);
+                sb.append((char) next);
             }
 
-            ch = nextChar();
+            next = nextChar();
         }
-        error("unexpected EOF");
-
-        return new Token(EOF, "");
+        throw new SQLParseException("unexpected EOF");
     }
 
     private Token getIntOrDoubleLiteral() throws SQLParseException {
         StringBuilder sb = new StringBuilder();
         boolean isDouble = false;
-        int ch = nextChar();
-        while (isDigit(ch)) {
-            sb.append((char) ch);
-            ch = nextChar();
+        int next = nextChar();
+        while (isDigit(next)) {
+            sb.append((char) next);
+            next = nextChar();
         }
-        if (ch == '.') {
+        if (next == '.') {
             isDouble = true;
-            sb.append((char) ch);
-            ch = nextChar();
+            sb.append((char) next);
+            next = nextChar();
 
-            if (!isDigit(ch)) {
-                error("expect a digit after '.'");
+            if (!isDigit(next)) {
+                throw new SQLParseException("expect a digit after '.'");
             }
 
-            while (isDigit(ch)) {
-                sb.append((char) ch);
-                ch = nextChar();
+            while (isDigit(next)) {
+                sb.append((char) next);
+                next = nextChar();
             }
         }
 
@@ -183,17 +180,19 @@ public class Lexer {
     private Token getIdentifierOrKeyword() throws SQLParseException {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(doGetIdentifier());
-        while (nextChar() == '.') { // 支持形如 foo.bar 这样的 identifier
-            sb.append(".");
-            if (nextChar() == '*') { // foo.*
-                sb.append("*");
-                return new Token(IDENTIFIER, sb.toString()); // 直接返回，必不是 keyword
-            }
-            rollback(); // 读取了一个非 * 字符
-            sb.append(doGetIdentifier());
+        int next = nextChar();
+        if (!(isLetter(next) || next == '_')) {
+            throw new SQLParseException("expected [a-zA-Z_], but got %c", (char) next);
         }
-        rollback(); // 读取了一个非 . 字符
+        sb.append((char) next);
+
+        next = nextChar();
+        while (isDigit(next) || isLetter(next) || next == '_') {
+            sb.append((char) next);
+            next = nextChar();
+        }
+
+        rollback(); // 读取了一个未使用的字符
 
         String t = sb.toString().toUpperCase();
         if (keywords.containsKey(t)) {
@@ -201,26 +200,6 @@ public class Lexer {
         } else {
             return new Token(IDENTIFIER, sb.toString());
         }
-    }
-
-    private String doGetIdentifier() throws SQLParseException {
-        StringBuilder sb = new StringBuilder();
-
-        int ch = nextChar();
-        if (!(isLetter(ch) || ch == '_')) {
-            error("expect [a-zA-Z_]");
-        }
-        sb.append((char) ch);
-
-        ch = nextChar();
-        while (isDigit(ch) || isLetter(ch) || ch == '_') {
-            sb.append((char) ch);
-            ch = nextChar();
-        }
-
-        rollback(); // 读取了一个未使用的字符
-
-        return sb.toString();
     }
 
     private int nextChar() {
@@ -246,19 +225,15 @@ public class Lexer {
         }
     }
 
-    private void error(String msg) throws SQLParseException {
-        throw new SQLParseException(msg);
+    private static boolean isBlank(int next) {
+        return next == ' ' || next == '\t' || next == '\r' || next == '\n';
     }
 
-    private static boolean isBlank(int ch) {
-        return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
+    private static boolean isDigit(int next) {
+        return '0' <= next && next <= '9';
     }
 
-    private static boolean isDigit(int ch) {
-        return '0' <= ch && ch <= '9';
-    }
-
-    private static boolean isLetter(int ch) {
-        return ('a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z');
+    private static boolean isLetter(int next) {
+        return ('a' <= next && next <= 'z' || 'A' <= next && next <= 'Z');
     }
 }

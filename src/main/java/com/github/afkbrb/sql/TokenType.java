@@ -32,7 +32,6 @@ public enum TokenType {
     CLOSE_PAR, // ')'
 
     // 关键字
-    ALL,
     AND,
     AS,
     ASC,
@@ -41,7 +40,6 @@ public enum TokenType {
     CREATE,
     DELETE,
     DESC,
-    DISTINCT,
     DOUBLE,
     DROP,
     FALSE,
@@ -78,7 +76,6 @@ public enum TokenType {
     public static final Map<String, TokenType> keywords = new HashMap<>();
 
     static {
-        keywords.put("ALL", ALL);
         keywords.put("AND", AND);
         keywords.put("AS", AS);
         keywords.put("ASC", ASC);
@@ -87,7 +84,6 @@ public enum TokenType {
         keywords.put("CREATE", CREATE);
         keywords.put("DELETE", DELETE);
         keywords.put("DESC", DESC);
-        keywords.put("DISTINCT", DISTINCT);
         keywords.put("DOUBLE", DOUBLE);
         keywords.put("DROP", DROP);
         keywords.put("FALSE", FALSE);

@@ -3,6 +3,7 @@ package com.github.afkbrb.sql.model;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,6 +13,8 @@ import java.util.Objects;
 public class Row {
 
     private final List<Cell> cells;
+
+    public static final Row EMPTY_ROW = new Row(Collections.emptyList());
 
     public Row(@NotNull List<Cell> cells) {
         this.cells = Objects.requireNonNull(cells);
@@ -37,6 +40,10 @@ public class Row {
     @NotNull
     public List<Cell> getCells() {
         return cells;
+    }
+
+    public int size() {
+        return cells.size();
     }
 
     @Override

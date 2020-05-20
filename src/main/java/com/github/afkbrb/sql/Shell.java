@@ -33,7 +33,7 @@ public class Shell {
                 statementList = parser.statementList();
                 for (Statement statement : statementList) {
                     if (statement instanceof SelectStatement) {
-                        Table table = SelectExecutor.doSelect((SelectStatement) statement);
+                        Table table = new SelectExecutor().doSelect((SelectStatement) statement);
                         System.out.println(prettify(table.toString()));
                     } else if (statement instanceof CreateStatement) {
                         CreateExecutor.doCreate((CreateStatement) statement);

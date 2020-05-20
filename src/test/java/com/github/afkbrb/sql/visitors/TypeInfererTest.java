@@ -5,6 +5,7 @@ import com.github.afkbrb.sql.Parser;
 import com.github.afkbrb.sql.SQLParseException;
 import com.github.afkbrb.sql.model.Column;
 import com.github.afkbrb.sql.model.DataType;
+import com.github.afkbrb.sql.model.InheritedContext;
 import com.github.afkbrb.sql.model.Schema;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,7 +29,7 @@ public class TypeInfererTest {
         columnList.add(new Column(2, "name", STRING, "test_table"));
         columnList.add(new Column(3, "name", STRING, "another_table"));
         Schema schema = new Schema(columnList);
-        inferer = new TypeInferer(schema);
+        inferer = new TypeInferer(new InheritedContext(), schema);
     }
 
     @Test

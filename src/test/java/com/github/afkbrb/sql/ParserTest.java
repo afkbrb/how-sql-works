@@ -82,30 +82,12 @@ public class ParserTest {
     }
 
     @Test
-    public void selectAllTest() throws SQLParseException {
-        String statement = "select all * from test1;";
-        Lexer lexer = new Lexer(new StringReader(statement));
-        Parser parser = new Parser(lexer);
-        List<Statement> statementList = parser.statementList();
-        Assert.assertEquals("SELECT ALL * FROM test1;", statementList.get(0).toString());
-    }
-
-    @Test
-    public void selectDistinctTest() throws SQLParseException {
-        String statement = "select distinct * as xxx, sum(age) as sum, table1.* from table1;";
-        Lexer lexer = new Lexer(new StringReader(statement));
-        Parser parser = new Parser(lexer);
-        List<Statement> statementList = parser.statementList();
-        Assert.assertEquals("SELECT DISTINCT * AS xxx, sum(age) AS sum, table1.* FROM table1;", statementList.get(0).toString());
-    }
-
-    @Test
     public void subQueryTest() throws SQLParseException {
-        String statement = "select * from (select * from (select * from (select * from table1)));";
+        String statement = "select * from (select * from (select * from (select * from table1) as t3) as t2) t1;";
         Lexer lexer = new Lexer(new StringReader(statement));
         Parser parser = new Parser(lexer);
         List<Statement> statementList = parser.statementList();
-        Assert.assertEquals("SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM table1)));", statementList.get(0).toString());
+        Assert.assertEquals("SELECT * FROM ((SELECT * FROM ((SELECT * FROM ((SELECT * FROM table1) AS t3)) AS t2)) AS t1);", statementList.get(0).toString());
     }
 
     @Test

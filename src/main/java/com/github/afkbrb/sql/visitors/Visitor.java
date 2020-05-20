@@ -25,8 +25,6 @@ public interface Visitor<T> {
 
     T visit(FunctionCallExpression node);
 
-    T visit(IdentifierExpression node);
-
     T visit(InListExpression node);
 
     T visit(InSubQueryExpression node);
@@ -35,7 +33,11 @@ public interface Visitor<T> {
 
     T visit(DoubleExpression node);
 
-    T visit(TextExpression node);
+    T visit(StringExpression node);
+
+    T visit(ColumnNameExpression node);
+
+    T visit(WildcardExpression node);
 
     T visit(NullExpression node);
 
@@ -53,13 +55,14 @@ public interface Visitor<T> {
 
     T visit(TableJoin node);
 
-    T visit(SubQueryFactor node);
+    T visit(DerivedTable node);
 
     T visit(RealTableFactor node);
 
-    T visit(GroupBy groupBy);
+    T visit(GroupBy node);
 
-    T visit(OrderBy orderBy);
+    T visit(OrderBy node);
 
-    T visit(Limit limit);
+    T visit(Limit node);
+
 }

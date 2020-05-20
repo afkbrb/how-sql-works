@@ -1,5 +1,6 @@
 package com.github.afkbrb.sql.model;
 
+import com.github.afkbrb.sql.SQLExecuteException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,6 +41,13 @@ public class Table {
         rows.add(Objects.requireNonNull(row));
     }
 
+    public void addRows(@NotNull List<Row> rows) {
+        Objects.requireNonNull(rows);
+        for (Row row : rows) {
+            addRow(row);
+        }
+    }
+
     @Nullable
     public Row getRow(int rowIndex) {
         if (rowIndex >= 0 && rowIndex < rows.size()) {
@@ -52,10 +60,6 @@ public class Table {
         return rows;
     }
 
-    public List<Row> copyRows() {
-        return new ArrayList<>(rows);
-    }
-
     public int getRowCount() {
         return rows.size();
     }
@@ -65,19 +69,12 @@ public class Table {
     }
 
     @Nullable
-    public Cell getCell(int rowIndex, String columnName) {
+    public Cell getCell(int rowIndex, String columnName) throws SQLExecuteException {
         if (rowIndex >= 0 && rowIndex < rows.size()) {
-            int columnIndex = schema.getColumnIndex(columnName);
-            return rows.get(rowIndex).getCell(columnIndex);
-        }
-        return null;
-    }
-
-    @Nullable
-    public Object getCellValue(int rowIndex, String columnName) {
-        Cell cell = getCell(rowIndex, columnName);
-        if (cell != null) {
-            return cell.getTypedValue();
+            Column column = schema.getColumn(columnName);
+            if (column != null) {
+                return rows.get(rowIndex).getCell(column.getColumnIndex());
+            }
         }
         return null;
     }
@@ -90,9 +87,6 @@ public class Table {
         return tableName;
     }
 
-    public void setRows(@NotNull List<Row> rows) {
-        this.rows = Objects.requireNonNull(rows);
-    }
 
     @Override
     public String toString() {

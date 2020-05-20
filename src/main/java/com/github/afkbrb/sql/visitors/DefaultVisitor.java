@@ -73,7 +73,7 @@ public class DefaultVisitor<T> implements Visitor<T> {
     }
 
     @Override
-    public T visit(SelectStatement.SubQueryFactor node) {
+    public T visit(SelectStatement.DerivedTable node) {
         node.getSelectStatement().accept(this);
         return null;
     }
@@ -131,11 +131,6 @@ public class DefaultVisitor<T> implements Visitor<T> {
     }
 
     @Override
-    public T visit(IdentifierExpression node) {
-        return null;
-    }
-
-    @Override
     public T visit(InListExpression node) {
         node.getTarget().accept(this);
         node.getList().forEach(expression -> expression.accept(this));
@@ -160,12 +155,22 @@ public class DefaultVisitor<T> implements Visitor<T> {
     }
 
     @Override
-    public T visit(TextExpression node) {
+    public T visit(StringExpression node) {
         return null;
     }
 
     @Override
     public T visit(NullExpression node) {
+        return null;
+    }
+
+    @Override
+    public T visit(ColumnNameExpression node) {
+        return null;
+    }
+
+    @Override
+    public T visit(WildcardExpression node) {
         return null;
     }
 

@@ -61,7 +61,7 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
     @Override
     public Void visit(InsertStatement node) {
         sb.append("INSERT INTO ").append(node.getTableName()).append(" ");
-        if (node.getColumnList() != null && node.getColumnList().size() > 0) {
+        if (node.getColumnList().size() > 0) {
             sb.append("(");
             boolean first = true;
             for (String columnName : node.getColumnList()) {
@@ -85,23 +85,18 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         return null;
     }
 
-    private Void appendExpressionList(List<Expression> expressionList) {
+    private void appendExpressionList(List<Expression> expressionList) {
         boolean first = true;
         for (Expression expression : expressionList) {
             if (!first) sb.append(", ");
             expression.accept(this);
             first = false;
         }
-        return null;
     }
 
     @Override
     public Void visit(SelectStatement node) {
         sb.append("SELECT ");
-
-        if (node.getSelectOption() != null) {
-            sb.append(node.getSelectOption()).append(" ");
-        }
 
         boolean first = true;
         for (Pair<Expression, String> pair : node.getSelectItemList()) {
@@ -176,18 +171,15 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
     }
 
     @Override
-    public Void visit(SubQueryFactor node) {
-        if (node.getAlias() != null) sb.append("(");
+    public Void visit(DerivedTable node) {
+        sb.append("(");
 
         sb.append("(");
         node.getSelectStatement().accept(this);
         sb.append(")");
+        sb.append(" AS ").append(node.getAlias());
 
-        if (node.getAlias() != null) {
-            sb.append(" AS ").append(node.getAlias());
-        }
-
-        if (node.getAlias() != null) sb.append(")");
+        sb.append(")");
         return null;
     }
 
@@ -319,8 +311,8 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
     }
 
     @Override
-    public Void visit(TextExpression node) {
-        sb.append("'").append(node.getText()).append("'"); // TODO 也许要用双引号
+    public Void visit(StringExpression node) {
+        sb.append("'").append(node.getText()).append("'");
         return null;
     }
 
@@ -331,8 +323,20 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
     }
 
     @Override
-    public Void visit(IdentifierExpression node) {
-        sb.append(node.getIdentifier());
+    public Void visit(ColumnNameExpression node) {
+        if (node.getTableName() != null) {
+            sb.append(node.getTableName()).append(".");
+        }
+        sb.append(node.getColumnName());
+        return null;
+    }
+
+    @Override
+    public Void visit(WildcardExpression node) {
+        if (node.getTableName() != null) {
+            sb.append(node.getTableName()).append(".");
+        }
+        sb.append("*");
         return null;
     }
 

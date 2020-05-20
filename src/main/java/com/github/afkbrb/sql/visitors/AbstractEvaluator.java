@@ -5,6 +5,7 @@ import com.github.afkbrb.sql.ast.expressions.*;
 import com.github.afkbrb.sql.ast.statements.SelectStatement;
 import com.github.afkbrb.sql.executors.SelectExecutor;
 import com.github.afkbrb.sql.model.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -16,12 +17,14 @@ import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
 
 public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
 
+    protected final InheritedContext context;
     protected final Row row;
     protected final Schema schema;
 
-    public AbstractEvaluator(@Nullable Row row, @Nullable Schema schema) {
-        this.row = row;
+    public AbstractEvaluator(@Nullable InheritedContext context, @NotNull Schema schema, @NotNull Row row) {
+        this.context = context;
         this.schema = schema;
+        this.row = row;
     }
 
     public TypedValue evaluate(Expression expression) {
@@ -115,7 +118,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
                 case LT:
                     return new TypedValue(INT, toInt(leftStr.compareTo(rightStr) < 0));
                 case GT:
-                    return new TypedValue(INT,toInt(leftStr.compareTo(rightStr) > 0));
+                    return new TypedValue(INT, toInt(leftStr.compareTo(rightStr) > 0));
                 case EQ:
                     return new TypedValue(INT, toInt(leftStr.compareTo(rightStr) == 0));
                 case LE:
@@ -132,18 +135,6 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
 
     @Override
     public abstract TypedValue visit(FunctionCallExpression node);
-
-    @Override
-    public TypedValue visit(IdentifierExpression node) {
-        if (node.getIdentifier().equalsIgnoreCase("null")) return TypedValue.NULL;
-
-        if (schema == null) return new EvaluateError("schema is null");
-        if (row == null) return new EvaluateError("row is null");
-
-        Column column = schema.getColumn(node.getIdentifier());
-        if (column == null) return new EvaluateError("cannot find column with name %s", node.getIdentifier());
-        return row.getCell(column.getColumnIndex()).getTypedValue();
-    }
 
     @Override
     public TypedValue visit(InListExpression node) {
@@ -164,18 +155,29 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue target = node.getTarget().accept(this);
         SelectStatement subQuery = node.getSubQuery();
         try {
-            Table table = SelectExecutor.doSelect(subQuery);
+            Table table;
+            if (context != null) {
+                context.push(schema, row);
+                table = new SelectExecutor(context).doSelect(subQuery);
+                context.pop();
+            } else {
+                InheritedContext context = new InheritedContext();
+                context.push(schema, row);
+                table = new SelectExecutor(context).doSelect(subQuery);
+            }
             if (table.getColumnCount() == 1) {
                 List<Row> rows = table.getRows();
                 List<TypedValue> typedValueList = new ArrayList<>();
                 for (Row row : rows) {
-                    TypedValue typedValue = row.getCell(0).getTypedValue();
+                    Cell cell = row.getCell(0);
+                    assert cell != null;
+                    TypedValue typedValue = cell.getTypedValue();
                     if (isError(typedValue)) return typedValue;
                     typedValueList.add(typedValue);
                 }
                 return inList(target, typedValueList);
             } else {
-                return new EvaluateError("sub query should contain exactly one column");
+                return new EvaluateError("Sub query should contain exactly one column");
             }
         } catch (SQLExecuteException e) {
             return new EvaluateError(e.getMessage());
@@ -215,13 +217,47 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     }
 
     @Override
-    public TypedValue visit(TextExpression node) {
+    public TypedValue visit(StringExpression node) {
         return new TypedValue(STRING, node.getText());
     }
 
     @Override
     public TypedValue visit(NullExpression node) {
         return TypedValue.NULL;
+    }
+
+    @Override
+    public TypedValue visit(ColumnNameExpression node) {
+        Column column;
+        try {
+            if (node.getTableName() == null) {
+                column = schema.getColumn(node.getColumnName());
+            } else {
+                column = schema.getColumn(node.getTableName(), node.getColumnName());
+            }
+            if (column != null) {
+                Cell cell = row.getCell(column.getColumnIndex());
+                assert cell != null;
+                return cell.getTypedValue();
+            }
+
+            if (context != null) {
+                if (node.getTableName() == null) {
+                    return context.getTypedValue(node.getColumnName());
+                } else {
+                    return context.getTypedValue(node.getTableName(), node.getColumnName());
+                }
+            }
+        } catch (SQLExecuteException e) {
+            return new EvaluateError(e.getMessage());
+        }
+
+        return new EvaluateError("Cannot find column with name %s", node);
+    }
+
+    @Override
+    public TypedValue visit(WildcardExpression node) {
+        return new EvaluateError("Unexpected wildcard expression %s", node);
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.github.afkbrb.sql.model.*;
 import com.github.afkbrb.sql.visitors.RowEvaluator;
 import com.github.afkbrb.sql.visitors.RowsEvaluator;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,54 +17,69 @@ import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
 
 public abstract class Executor {
 
-    /**
-     * 判断给定的 row 是否满足给定的条件。
-     */
-    protected static boolean predict(Row row, Schema schema, Expression condition) throws SQLExecuteException {
-        TypedValue typedValue = evaluate(row, schema, condition);
-        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
-    }
-
-    protected static boolean predict(List<Row> rows, Schema schema, Expression condition) throws SQLExecuteException {
-        TypedValue typedValue = evaluate(rows, schema, condition);
-        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
-    }
-
-    @NotNull
-    protected static TypedValue evaluate(Row row, Schema schema, Expression expression) throws SQLExecuteException {
-        RowEvaluator evaluator = new RowEvaluator(row, schema);
-        TypedValue typedValue = evaluator.evaluate(expression);
-        if (isError(typedValue)) error(typedValue.getValue().toString());
-        return typedValue;
-    }
-
-    @NotNull
-    protected static TypedValue evaluate(List<Row> rows, Schema schema, Expression expression) throws SQLExecuteException {
-        RowsEvaluator evaluator = new RowsEvaluator(rows, schema);
-        TypedValue typedValue = evaluator.evaluate(expression);
-        if (isError(typedValue)) error(typedValue.getValue().toString());
-        return typedValue;
-    }
-
     @NotNull
     protected static TypedValue evaluate(Expression expression) throws SQLExecuteException {
-        return evaluate((Row) null, null, expression);
+        // 使用固定的空值，防止每次重新创建一个空实例
+        return evaluate(Schema.EMPTY_SCHEMA, Row.EMPTY_ROW, expression);
     }
 
-    protected static void error(String format, Object... args) throws SQLExecuteException {
-        throw new SQLExecuteException(String.format(format, args));
+    @NotNull
+    protected static TypedValue evaluate(InheritedContext context, Expression expression) throws SQLExecuteException {
+        // 使用固定的空值，防止每次重新创建一个空实例
+        return evaluate(context, Schema.EMPTY_SCHEMA, Row.EMPTY_ROW, expression);
+    }
+
+    protected static boolean predict(Schema schema, Row row, Expression condition) throws SQLExecuteException {
+        TypedValue typedValue = evaluate(schema, row, condition);
+        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
+    }
+
+    @NotNull
+    protected static TypedValue evaluate(Schema schema, Row row, Expression expression) throws SQLExecuteException {
+        return evaluate(null, schema, row, expression);
+    }
+
+    @NotNull
+    protected static TypedValue evaluate(Schema schema, List<Row> rows, Expression expression) throws SQLExecuteException {
+        return evaluate(null, schema, rows, expression);
+    }
+
+    public static boolean predict(InheritedContext context, Schema schema, Row row, Expression expression) throws SQLExecuteException {
+        TypedValue typedValue = evaluate(context, schema, row, expression);
+        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
+    }
+
+    public static boolean predict(InheritedContext context, Schema schema, List<Row> rows, Expression expression) throws SQLExecuteException {
+        TypedValue typedValue = evaluate(context, schema, rows, expression);
+        return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
+    }
+
+    public static TypedValue evaluate(@Nullable InheritedContext context, @NotNull Schema schema,
+                                      @NotNull Row row, @NotNull Expression expression) throws SQLExecuteException {
+        RowEvaluator evaluator = new RowEvaluator(context, schema, row);
+        TypedValue typedValue = evaluator.evaluate(expression);
+        if (isError(typedValue)) throw new SQLExecuteException(typedValue.getValue().toString());
+        return typedValue;
+    }
+
+    public static TypedValue evaluate(@Nullable InheritedContext context, @NotNull Schema schema,
+                                      @NotNull List<Row> rows, @NotNull Expression expression) throws SQLExecuteException {
+        RowsEvaluator evaluator = new RowsEvaluator(context, schema, rows);
+        TypedValue typedValue = evaluator.evaluate(expression);
+        if (isError(typedValue)) throw new SQLExecuteException(typedValue.getValue().toString());
+        return typedValue;
     }
 
     protected static void requireTableNotExists(String tableName) throws SQLExecuteException {
         if (TableManager.getInstance().getTable(tableName) != null) {
-            error("table %s already exists", tableName);
+            throw new SQLExecuteException("table %s already exists", tableName);
         }
     }
 
     protected static Table requireTableExists(String tableName) throws SQLExecuteException {
         Table table = TableManager.getInstance().getTable(tableName);
         if (table == null) {
-            error("table %s doesn't exist!", tableName);
+            throw new SQLExecuteException("table %s doesn't exist!", tableName);
         }
         return table;
     }
@@ -74,7 +90,7 @@ public abstract class Executor {
     protected static TypedValue ensureDataType(@NotNull DataType type, @NotNull TypedValue typedValue) throws SQLExecuteException {
         Objects.requireNonNull(type);
         Objects.requireNonNull(typedValue);
-        //  所有的 error 已经由 evaluate 相关函数处理了，此处不再处理
+        //  所有的 throw new SQLExecuteException 已经由 evaluate 相关函数处理了，此处不再处理
         if (isNull(typedValue)) return TypedValue.NULL;
         if (typedValue.getDataType() != type) {
             if (type == DOUBLE && isInt(typedValue)) {
@@ -82,12 +98,10 @@ public abstract class Executor {
             } else if (type == DataType.INT && isDouble(typedValue)) {
                 return new TypedValue(DataType.INT, ((Number) typedValue.getValue()).intValue());
             } else {
-                error("expected %s, but got %s", type, typedValue.getDataType());
+                throw new SQLExecuteException("expected %s, but got %s", type, typedValue.getDataType());
             }
         } else {
             return typedValue;
         }
-
-        throw new IllegalStateException("got a bug, shouldn't reach here");
     }
 }

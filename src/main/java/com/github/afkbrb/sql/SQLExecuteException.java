@@ -6,7 +6,7 @@ public class SQLExecuteException extends Exception {
         super();
     }
 
-    public SQLExecuteException(String msg) {
-        super(msg);
+    public SQLExecuteException(String format, Object... args) {
+        super(String.format(format, args));
     }
 }
