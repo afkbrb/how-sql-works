@@ -15,7 +15,7 @@ public class SelectExecutorTest extends ExecutorTest {
     private static Table select(String selectStatement) throws SQLParseException, SQLExecuteException {
         selectStatement = selectStatement.trim();
         Parser parser = new Parser(new Lexer(new StringReader(selectStatement)));
-        String action = selectStatement.split(" ")[0].toLowerCase();
+        String action = selectStatement.split("\\s+")[0].toLowerCase();
         if (!action.equalsIgnoreCase("select")) throw new IllegalArgumentException("expected select, but got " + action);
         return new SelectExecutor().doSelect(parser.selectStatement());
     }

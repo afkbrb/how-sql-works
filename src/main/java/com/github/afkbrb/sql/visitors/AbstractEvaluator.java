@@ -29,8 +29,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
 
     @NotNull
     public TypedValue evaluate(Expression expression) {
-        TypedValue debug = expression.accept(this);
-        return debug;
+        return expression.accept(this);
     }
 
     @Override
@@ -41,7 +40,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         if (isError(target)) return target;
         if (isError(left)) return left;
         if (isError(right)) return right;
-
+        if (isNull(target) || isNull(left) || isNull(right)) return TypedValue.NULL;
         if (isString(target) && isString(left) && isString(right)) {
             String targetSt = (String) target.getValue();
             String leftStr = (String) left.getValue();
@@ -63,6 +62,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isError(left)) return left;
         if (isError(right)) return right;
+        if (isNull(left) || isNull(right)) return TypedValue.NULL;
         if (isNumber(left) && isNumber(right)) {
             double leftVal = ((Number) left.getValue()).doubleValue();
             double rightVal = ((Number) right.getValue()).doubleValue();
@@ -132,7 +132,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             }
         }
 
-        return new EvaluateError("expected two numbers ro two strings");
+        return new EvaluateError("expected two numbers or two strings");
     }
 
     @Override
@@ -152,6 +152,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         return inList(target, typedValueList);
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public TypedValue visit(InSubQueryExpression node) {
         TypedValue target = node.getTarget().accept(this);
@@ -162,9 +163,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
                 List<Row> rows = table.getRows();
                 List<TypedValue> typedValueList = new ArrayList<>();
                 for (Row row : rows) {
-                    Cell cell = row.getCell(0);
-                    assert cell != null;
-                    TypedValue typedValue = cell.getTypedValue();
+                    TypedValue typedValue = row.getCell(0).getTypedValue();
                     if (isError(typedValue)) return typedValue;
                     typedValueList.add(typedValue);
                 }
@@ -177,6 +176,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         }
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public TypedValue visit(SubQueryExpression node) {
         SelectStatement subQuery = node.getSubQuery();
@@ -187,11 +187,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
             } else {
                 if (table.getRowCount() == 0) return TypedValue.NULL; // 0 行不报错，返回 NULL
                 if (table.getRowCount() == 1 && table.getColumnCount() == 1) {
-                    Row row = table.getRow(0);
-                    assert row != null;
-                    Cell cell = row.getCell(0);
-                    assert cell != null;
-                    return cell.getTypedValue();
+                    return table.getRow(0).getCell(0).getTypedValue();
                 } else {
                     return new EvaluateError("sub query must return exactly 1 column and 0/1 row");
                 }
@@ -257,6 +253,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         return TypedValue.NULL;
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public TypedValue visit(ColumnNameExpression node) {
         try {
@@ -267,9 +264,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
                 column = schema.getColumn(node.getTableName(), node.getColumnName());
             }
             if (column != null) {
-                Cell cell = row.getCell(column.getColumnIndex());
-                assert cell != null;
-                return cell.getTypedValue();
+                return row.getCell(column.getColumnIndex()).getTypedValue();
             }
 
             if (context != null) {
@@ -310,48 +305,86 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isError(left)) return left;
         if (isError(right)) return right;
-
+        if (isNull(left) || isNull(right)) return TypedValue.NULL;
         if (isString(left) && isString(right)) {
             String leftStr = (String) left.getValue();
             String rightStr = (String) right.getValue();
-            // 将 rightStr 转化成等价的正则表达式就行了
-            // 当然，还得注意转义
-            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < rightStr.length(); i++) {
-                char curr = rightStr.charAt(i);
-                if (curr == '\\') {
+                if (rightStr.charAt(i) == '\\') { // \ 只能以 \\ \_ \% d的形式出现
                     if (i + 1 < rightStr.length()) {
-                        char next = rightStr.charAt(++i);
-                        if (next == '_' || next == '%') {
-                            sb.append(next);
+                        char next = rightStr.charAt(i + 1);
+                        if (next == '\\' || next == '_' || next == '%') {
+                            i++;
                         } else {
-                            sb.append('\\').append(next);
+                            return new EvaluateError("invalid escape '\\%c'", next);
                         }
                     } else {
-                        sb.append('\\');
+                        return new EvaluateError("the character to be escaped is missing");
                     }
-                } else if (curr == '_') {
-                    sb.append(".");
-                } else if (curr == '%') {
-                    sb.append(".*");
-                } else {
-                    sb.append(curr);
                 }
             }
-            String regex = sb.toString();
-            if (node.isNot()) {
-                return new TypedValue(INT, toInt(!leftStr.matches(regex)));
-            } else {
-                return new TypedValue(INT, toInt(leftStr.matches(regex)));
+            try {
+                boolean result = like(leftStr, rightStr);
+                return new TypedValue(INT, toInt(node.isNot() != result));
+            } catch (Exception e) {
+                return new EvaluateError(e.getMessage());
             }
         }
-        return new EvaluateError("expected two strings");
+        return new EvaluateError("like expects two strings");
+    }
+
+    public static boolean like(String left, String right) {
+        // 调用时保证了 right 是合法的
+        String regex = right.replace("\\", "\\\\")
+                .replace(".", "\\.")
+                .replace("*", "\\*")
+                .replaceAll("(?<!\\\\\\\\)_", ".")
+                .replaceAll("(?<!\\\\\\\\)%", ".*")
+                .replace("\\\\_", "_")
+                .replace("\\\\%", "%")
+                .replace("\\\\\\\\", "\\\\")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
+                .replace("{", "\\{")
+                .replace("}", "\\}")
+                .replace("^", "\\^")
+                .replace("$", "\\$")
+                .replace("?", "\\?")
+                .replace("+", "\\+");
+        return left.matches(regex); // 完全匹配，符合 like 语义
+    }
+
+    @Override
+    public TypedValue visit(RegexpExpression node) {
+        TypedValue left = node.getLeft().accept(this);
+        TypedValue right = node.getRight().accept(this);
+        if (isError(left)) return left;
+        if (isError(right)) return right;
+        if (isNull(left) || isNull(right)) return TypedValue.NULL;
+        if (isString(left) && isString(right)) {
+            String leftStr = (String) left.getValue();
+            String rightStr = (String) right.getValue();
+            // 按 SQL 规范，应该局部匹配
+            // 而 Java match 函数使用完全匹配，所以此处加上 .* 解决此问题
+            // 当用户想要完全匹配时，输入 xxx regexp '^xxx$' 即可
+            String regex = ".*" + rightStr + ".*";
+            try {
+                boolean result = leftStr.matches(regex);
+                return new TypedValue(INT, toInt(node.isNot() != result));
+            } catch (Exception e) {
+                return new EvaluateError(e.getMessage());
+            }
+        }
+        return new EvaluateError("regexp expects two strings");
     }
 
     @Override
     public TypedValue visit(UnaryExpression node) {
         TypedValue typedValue = node.getExpression().accept(this);
         if (isError(typedValue)) return typedValue;
+        if (isNull(typedValue)) return TypedValue.NULL;
         if (isNumber(typedValue)) {
             double value = ((Number) typedValue.getValue()).doubleValue();
             switch (node.getOp()) {
@@ -378,6 +411,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isError(left)) return left;
         if (isError(right)) return right;
+        if (isNull(left) || isNull(right)) return TypedValue.NULL;
         if (isNumber(left) && isNumber(right)) {
             double leftVal = ((Number) left.getValue()).doubleValue();
             double rightVal = ((Number) right.getValue()).doubleValue();
@@ -392,6 +426,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isError(left)) return left;
         if (isError(right)) return right;
+        if (isNull(left) || isNull(right)) return TypedValue.NULL;
         if (isNumber(left) && isNumber(right)) {
             double leftVal = ((Number) left.getValue()).doubleValue();
             double rightVal = ((Number) right.getValue()).doubleValue();
@@ -404,6 +439,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     public TypedValue visit(NotExpression node) {
         TypedValue typedValue = node.getExpression().accept(this);
         if (isError(typedValue)) return typedValue;
+        if (isNull(typedValue)) return TypedValue.NULL;
         if (isNumber(typedValue)) {
             double value = ((Number) typedValue.getValue()).doubleValue();
             return new TypedValue(INT, toInt(value == 0));

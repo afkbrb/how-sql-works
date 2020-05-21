@@ -64,6 +64,7 @@ public enum TokenType {
     OR,
     ORDER,
     OUTER,
+    REGEXP,
     RIGHT,
     SELECT,
     SET,
@@ -109,6 +110,7 @@ public enum TokenType {
         keywords.put("OR", OR);
         keywords.put("ORDER", ORDER);
         keywords.put("OUTER", OUTER);
+        keywords.put("REGEXP", REGEXP);
         keywords.put("RIGHT", RIGHT);
         keywords.put("SELECT", SELECT);
         keywords.put("SET", SET);

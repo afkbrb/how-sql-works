@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
+import static com.github.afkbrb.sql.utils.JsonUtils.jsonEscape;
+
 public class Column {
 
     private final int columnIndex;
@@ -41,7 +43,7 @@ public class Column {
     public String toString() {
         return "{" +
                 "\"index\": " + columnIndex + ", " +
-                "\"name\": " + "\"" + columnName + "\"" + ", " +
+                "\"name\": " + "\"" + jsonEscape(columnName) + "\"" + ", " +
                 "\"type\": " + "\"" + dataType + "\"" + ", " +
                 "\"tableAlias\": " + "\"" + tableName + "\"" +
                 "}";

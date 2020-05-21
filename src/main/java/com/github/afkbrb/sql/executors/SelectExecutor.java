@@ -61,7 +61,7 @@ public class SelectExecutor extends Executor {
 
         if (selectStatement.getWhereCondition() != null) {
             for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
-                if (!predict(context, schema, iterator.next(), selectStatement.getWhereCondition())) iterator.remove();
+                if (!predicate(context, schema, iterator.next(), selectStatement.getWhereCondition())) iterator.remove();
             }
         }
 
@@ -136,9 +136,7 @@ public class SelectExecutor extends Executor {
             if (selectStatement.getOrderBy() != null) {
                 OrderBy orderBy = selectStatement.getOrderBy();
                 List<Pair<Expression, Boolean>> orderByList = orderBy.getOrderByList();
-                for (Pair<Expression, Boolean> pair : orderByList) {
-                    sortRows(rows, schema, pair.getKey(), pair.getValue());
-                }
+                sortRows(rows, schema, orderByList);
             }
 
             // 填充数据
@@ -180,7 +178,7 @@ public class SelectExecutor extends Executor {
 
             if (groupBy.getHavingCondition() != null) {
                 for (Iterator<Map.Entry<Group, List<Row>>> iterator = groupMap.entrySet().iterator(); iterator.hasNext(); ) {
-                    if (!predict(context, schema, iterator.next().getValue(), groupBy.getHavingCondition()))
+                    if (!predicate(context, schema, iterator.next().getValue(), groupBy.getHavingCondition()))
                         iterator.remove();
                 }
             }
@@ -189,9 +187,7 @@ public class SelectExecutor extends Executor {
             if (selectStatement.getOrderBy() != null) {
                 OrderBy orderBy = selectStatement.getOrderBy();
                 List<Pair<Expression, Boolean>> orderByList = orderBy.getOrderByList();
-                for (Pair<Expression, Boolean> pair : orderByList) {
-                    sortGroup(groupEntryList, schema, pair.getKey(), pair.getValue());
-                }
+                sortGroups(groupEntryList, schema, orderByList);
             }
 
             int upperBound = Math.min(groupEntryList.size(), offset + limit);
@@ -225,52 +221,57 @@ public class SelectExecutor extends Executor {
         return inferer.infer(expression);
     }
 
-    private void sortRows(List<Row> rows, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
-        Double[] valueArr = new Double[rows.size()];
-        Integer[] indexMap = new Integer[rows.size()]; // 用 int/double 无法使用 sort(T[] a, Comparator<? super T> c)
-        for (int i = 0; i < valueArr.length; i++) {
-            indexMap[i] = i;
-            TypedValue typedValue = evaluate(context, schema, rows.get(i), expression);
-            if (isNull(typedValue)) {
-                valueArr[i] = 0.0; // 将 NULL 当 0 处理
-            } else {
-                valueArr[i] = ((Number) typedValue.getValue()).doubleValue();
+    public void sortRows(List<Row> rows, Schema schema, List<Pair<Expression, Boolean>> orderByList) throws SQLExecuteException {
+        Row[] rowArr = rows.toArray(new Row[0]);
+
+        // 先在外部将 evaluate 的结果计算出来，否则如果在 lambda 内部求值的话，异常没法处理。
+        Map<Row, List<TypedValue>> rowToTypedValue = new HashMap<>();
+        for (Row row : rows) {
+            rowToTypedValue.put(row, new ArrayList<>());
+            for (Pair<Expression, Boolean> pair : orderByList) {
+                rowToTypedValue.get(row).add(evaluate(context, schema, row, pair.getKey()));
             }
         }
-        if (desc) {
-            Arrays.sort(indexMap, (i, j) -> valueArr[j].compareTo(valueArr[i]));
-        } else {
-            Arrays.sort(indexMap, (i, j) -> valueArr[i].compareTo(valueArr[j]));
-        }
 
-        List<Row> tmp = new ArrayList<>(rows);
-        for (int i = 0; i < rows.size(); i++) {
-            rows.set(i, tmp.get(indexMap[i]));
-        }
+        Arrays.sort(rowArr, (thisRow, otherRow) -> {
+            for (int i = 0; i < orderByList.size(); i++) {
+                TypedValue thisResult = rowToTypedValue.get(thisRow).get(i);
+                TypedValue otherResult = rowToTypedValue.get(otherRow).get(i);
+                int cmp = thisResult.compareTo(otherResult);
+                System.out.println("cmp" + cmp);
+                if (cmp == 0) continue; // 继续比较
+                return orderByList.get(i).getValue() ? -cmp : cmp;
+            }
+            return 0; // 所有都尝试了，仍相等，返回 0
+        });
+        rows.clear();
+        rows.addAll(Arrays.asList(rowArr));
     }
 
-    private void sortGroup(List<Map.Entry<Group, List<Row>>> groupEntryList, Schema schema, Expression expression, boolean desc) throws SQLExecuteException {
-        Double[] valueArr = new Double[groupEntryList.size()];
-        Integer[] indexMap = new Integer[groupEntryList.size()]; // 用 int/double 无法使用 sort(T[] a, Comparator<? super T> c)
-        for (int i = 0; i < valueArr.length; i++) {
-            indexMap[i] = i;
-            TypedValue typedValue = evaluate(context, schema, groupEntryList.get(i).getValue(), expression);
-            if (isNull(typedValue)) {
-                valueArr[i] = 0.0; // 将 NULL 当 0 处理
-            } else {
-                valueArr[i] = ((Number) typedValue.getValue()).doubleValue();
+    @SuppressWarnings("unchecked")
+    private void sortGroups(List<Map.Entry<Group, List<Row>>> groups, Schema schema, List<Pair<Expression, Boolean>> orderByList) throws SQLExecuteException {
+        Map.Entry<Group, List<Row>>[] groupArr = groups.toArray(new Map.Entry[0]);
+        Map<Map.Entry<Group, List<Row>>, List<TypedValue>> groupToTypedValue = new HashMap<>();
+        for (Map.Entry<Group, List<Row>> groupEntry : groups) {
+            groupToTypedValue.put(groupEntry, new ArrayList<>());
+            for (Pair<Expression, Boolean> pair : orderByList) {
+                groupToTypedValue.get(groupEntry).add(evaluate(context, schema, groupEntry.getValue(), pair.getKey()));
             }
         }
-        if (desc) {
-            Arrays.sort(indexMap, (i, j) -> valueArr[j].compareTo(valueArr[i]));
-        } else {
-            Arrays.sort(indexMap, (i, j) -> valueArr[i].compareTo(valueArr[j]));
-        }
 
-        ArrayList<Map.Entry<Group, List<Row>>> tmp = new ArrayList<>(groupEntryList);
-        for (int i = 0; i < groupEntryList.size(); i++) {
-            groupEntryList.set(i, tmp.get(indexMap[i]));
-        }
+        Arrays.sort(groupArr, (thisGroup, otherGroup) -> {
+            for (int i = 0; i < orderByList.size(); i++) {
+                TypedValue thisResult = groupToTypedValue.get(thisGroup).get(i);
+                TypedValue otherResult = groupToTypedValue.get(otherGroup).get(i);
+                int cmp = thisResult.compareTo(otherResult);
+                if (cmp == 0) continue;
+                return orderByList.get(i).getValue() ? -cmp : cmp;
+            }
+            return 0;
+        });
+
+        groups.clear();
+        groups.addAll(Arrays.asList(groupArr));
     }
 
     /**
@@ -347,7 +348,7 @@ public class SelectExecutor extends Executor {
                 newCells.addAll(leftRow.getCells());
                 newCells.addAll(rightRow.getCells());
                 Row newRow = new Row(newCells);
-                if (predict(context, schema, newRow, condition)) {
+                if (predicate(context, schema, newRow, condition)) {
                     newTable.addRow(newRow);
                     needLeftJoin[i] = false;
                 }

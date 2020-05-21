@@ -20,6 +20,7 @@ public class InheritedContext {
      * 根据表名和列名获取值。
      * 找不到的话返回 null，找到多个的话报错。
      */
+    @SuppressWarnings("ConstantConditions")
     @Nullable
     public TypedValue getTypedValue(String tableName, String columnName) throws SQLExecuteException {
         for (Pair<Schema, Row> pair : context) {
@@ -27,9 +28,7 @@ public class InheritedContext {
             Row row = pair.getValue();
             Column column = schema.getColumn(tableName, columnName);
             if (column != null) {
-                Cell cell = row.getCell(column.getColumnIndex());
-                assert cell != null;
-                return cell.getTypedValue();
+                return row.getCell(column.getColumnIndex()).getTypedValue();
             }
         }
         return null;
@@ -39,6 +38,7 @@ public class InheritedContext {
      * 根据列名获取值。
      * 找不到的话返回 null，找到多个的话报错。
      */
+    @SuppressWarnings("ConstantConditions")
     @Nullable
     public TypedValue getTypedValue(String columnName) throws SQLExecuteException {
         for (Pair<Schema, Row> pair : context) {
@@ -46,9 +46,7 @@ public class InheritedContext {
             Row row = pair.getValue();
             Column column = schema.getColumn(columnName);
             if (column != null) {
-                Cell cell = row.getCell(column.getColumnIndex());
-                assert cell != null;
-                return cell.getTypedValue();
+                return row.getCell(column.getColumnIndex()).getTypedValue();
             }
         }
         return null;

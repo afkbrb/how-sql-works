@@ -1,9 +1,25 @@
 package com.github.afkbrb.sql;
 
+import com.github.afkbrb.sql.ast.expressions.LikeExpression;
+import com.github.afkbrb.sql.ast.expressions.StringExpression;
+import com.github.afkbrb.sql.model.Row;
+import com.github.afkbrb.sql.model.Schema;
+import com.github.afkbrb.sql.model.TypedValue;
+import com.github.afkbrb.sql.visitors.AbstractEvaluator;
+import com.github.afkbrb.sql.visitors.RowEvaluator;
+import org.junit.Test;
+
+import java.util.Arrays;
+
 /**
  * 这不算测试。
  */
 public class VisitorDemo {
+
+    @Test
+    public void test() {
+        System.out.println("a+".matches("a\\+"));
+    }
 
     private static class Visitor {
 

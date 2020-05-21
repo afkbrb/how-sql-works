@@ -25,7 +25,7 @@ public class RowEvaluator extends AbstractEvaluator {
         Function function = FunctionRegistry.getFunction(node.getFunctionName());
         if (function == null) return new EvaluateError("Function %s not found", node.getFunctionName());
         if (function.isAggregate())
-            return new EvaluateError("Invalid use of aggregate function %s", node.getFunctionName());
+            return new EvaluateError("invalid use of aggregate function %s", node.getFunctionName());
 
         List<TypedValue> arguments = new ArrayList<>();
         for (Expression expression : node.getArgumentList()) {

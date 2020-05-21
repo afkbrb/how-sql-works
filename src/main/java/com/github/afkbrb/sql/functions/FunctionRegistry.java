@@ -11,6 +11,7 @@ public class FunctionRegistry {
         // aggregate
         registerFunction(new Max());
         registerFunction(new Min());
+        registerFunction(new Sum());
         registerFunction(new Avg());
         registerFunction(new Count());
 

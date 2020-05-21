@@ -92,8 +92,8 @@ public class RowEvaluatorTest {
         assertTypedValue(new TypedValue(INT, 1), "'abc' like '%b%'");
         assertTypedValue(new TypedValue(INT, 0), "'abc' like '%d%'");
         assertTypedValue(new TypedValue(INT, 1), "'中文' like '__'");
-        assertTypedValue(new TypedValue(INT, 1), "'%' like '\\%'");
-        assertTypedValue(new TypedValue(INT, 1), "'_' like '\\_'");
+        assertTypedValue(new TypedValue(INT, 1), "'%' like '\\\\%'");
+        assertTypedValue(new TypedValue(INT, 1), "'_' like '\\\\_'");
         assertTypedValue(new TypedValue(INT, 0), "'' like '_'");
         assertTypedValue(new TypedValue(INT, 1), "'' like '%'");
 

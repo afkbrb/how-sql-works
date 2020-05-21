@@ -22,7 +22,7 @@ public class UpdateExecutor extends Executor {
         List<Row> rows = table.getRows();
         List<Row> filteredRows = new ArrayList<>();
         for (Row row : rows) {
-            if (predict(schema, row, condition)) filteredRows.add(row);
+            if (predicate(schema, row, condition)) filteredRows.add(row);
         }
 
         List<Pair<String, Expression>> updateList = updateStatement.getUpdateList();

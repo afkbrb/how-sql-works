@@ -29,7 +29,7 @@ public abstract class Executor {
         return evaluate(context, Schema.EMPTY_SCHEMA, Row.EMPTY_ROW, expression);
     }
 
-    protected static boolean predict(Schema schema, Row row, Expression condition) throws SQLExecuteException {
+    protected static boolean predicate(Schema schema, Row row, Expression condition) throws SQLExecuteException {
         TypedValue typedValue = evaluate(schema, row, condition);
         return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
     }
@@ -44,12 +44,12 @@ public abstract class Executor {
         return evaluate(null, schema, rows, expression);
     }
 
-    public static boolean predict(InheritedContext context, Schema schema, Row row, Expression expression) throws SQLExecuteException {
+    public static boolean predicate(InheritedContext context, Schema schema, Row row, Expression expression) throws SQLExecuteException {
         TypedValue typedValue = evaluate(context, schema, row, expression);
         return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
     }
 
-    public static boolean predict(InheritedContext context, Schema schema, List<Row> rows, Expression expression) throws SQLExecuteException {
+    public static boolean predicate(InheritedContext context, Schema schema, List<Row> rows, Expression expression) throws SQLExecuteException {
         TypedValue typedValue = evaluate(context, schema, rows, expression);
         return typedValue.getValue() instanceof Number && ((Number) typedValue.getValue()).intValue() != 0;
     }

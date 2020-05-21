@@ -1,15 +1,16 @@
 package com.github.afkbrb.sql.model;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
 import static com.github.afkbrb.sql.model.DataType.*;
+import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
+import static com.github.afkbrb.sql.utils.JsonUtils.jsonEscape;
 
-public class TypedValue {
+public class TypedValue implements Comparable<TypedValue> {
 
-    public static final TypedValue NULL = new TypedValue(DataType.NULL, "this value should never be used");
+    public static final TypedValue NULL = new TypedValue(DataType.NULL, "null");
 
     private final DataType dataType;
     private Object value;
@@ -54,7 +55,7 @@ public class TypedValue {
                 break;
             case STRING:
             case ERROR:
-                sb.append("\"").append(value).append("\"");
+                sb.append("\"").append(jsonEscape((String) value)).append("\"");
                 break;
             case NULL:
                 sb.append("null");
@@ -70,8 +71,6 @@ public class TypedValue {
         if (!(other instanceof TypedValue)) return false;
         TypedValue otherValue = (TypedValue) other;
         if (dataType == otherValue.dataType) {
-            if (value == null && otherValue.value == null) return true;
-            if (value == null || otherValue.value == null) return false;
             return value.equals(otherValue.value);
         }
         return false;
@@ -80,5 +79,21 @@ public class TypedValue {
     @Override
     public int hashCode() {
         return Objects.hash(dataType, value);
+    }
+
+
+    @Override
+    public int compareTo(@NotNull TypedValue other) {
+        if (equals(other)) return 0;
+        if (isNull(this)) return -1; // NULL 总是最小的
+        if (isNull(other)) return 1;
+        if (isString(this) && isString(other)) {
+            return ((String) value).compareTo((String) other.value);
+        } else if (isNumber(this) && isNumber(other)) {
+            Double thisValue = ((Number) this.value).doubleValue();
+            Double otherValue = ((Number) other.value).doubleValue();
+            return thisValue.compareTo(otherValue);
+        }
+        throw new IllegalArgumentException();
     }
 }

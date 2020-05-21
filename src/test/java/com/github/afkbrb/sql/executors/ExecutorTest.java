@@ -18,7 +18,7 @@ public class ExecutorTest {
     protected static void execute(String statement) throws SQLParseException, SQLExecuteException {
         statement = statement.trim();
         Parser parser = new Parser(new Lexer(new StringReader(statement)));
-        String action = statement.split(" ")[0].toLowerCase();
+        String action = statement.split("\\s+")[0].toLowerCase();
         switch (action) {
             case "create":
                 CreateExecutor.doCreate(parser.createTableStatement());

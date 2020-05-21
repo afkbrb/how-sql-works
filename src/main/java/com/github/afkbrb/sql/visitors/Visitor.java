@@ -58,6 +58,8 @@ public interface Visitor<T> {
 
     T visit(LikeExpression node);
 
+    T visit(RegexpExpression node);
+
     T visit(UnaryExpression node);
 
     T visit(OrExpression node);
@@ -67,4 +69,5 @@ public interface Visitor<T> {
     T visit(AndExpression node);
 
     T visit(SubQueryExpression node);
+
 }

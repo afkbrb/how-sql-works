@@ -312,7 +312,11 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
 
     @Override
     public Void visit(StringExpression node) {
-        sb.append("'").append(node.getText()).append("'");
+        // 先将 \ 还原成 \\，将 ' 还原成 \'
+        String text = node.getText();
+        text = text.replaceAll("\\\\", "\\\\\\\\");
+        text = text.replaceAll("'", "\\\\'");
+        sb.append("'").append(text).append("'");
         return null;
     }
 
@@ -358,6 +362,18 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         if (node.isNot()) sb.append(" NOT");
 
         sb.append(" LIKE ");
+        node.getRight().accept(this);
+        sb.append(")");
+        return null;
+    }
+
+    @Override
+    public Void visit(RegexpExpression node) {
+        sb.append("(");
+        node.getLeft().accept(this);
+        if (node.isNot()) sb.append("NOT");
+
+        sb.append(" REGEXP ");
         node.getRight().accept(this);
         sb.append(")");
         return null;

@@ -136,9 +136,10 @@ public class Lexer {
                     throw new SQLParseException("unexpected EOF");
                 } else if (t == '\'') {
                     sb.append('\'');
-                } else {
+                } else if (t == '\\'){ // 对 \ 自身进行转义
                     sb.append('\\');
-                    sb.append((char) t);
+                } else {
+                    throw new SQLParseException("expected '\\' or ''' after '\\', but got '%c'", (char) t);
                 }
             } else {
                 sb.append((char) next);

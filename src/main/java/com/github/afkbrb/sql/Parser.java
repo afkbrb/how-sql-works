@@ -439,7 +439,7 @@ public class Parser {
      * </pre>
      */
     private Expression betweenExpression() throws SQLParseException {
-        Expression target = predict();
+        Expression target = predicate();
         if (lexer.current().getType() == BETWEEN) {
             match(BETWEEN);
             Expression left = betweenExpression();
@@ -455,16 +455,17 @@ public class Parser {
      * predict
      *     : addExpr (NOT? IN OPEN_PAR (expr (COMMA expr)* | selectStatement) CLOSE_PAR
      *              | NOT? LIKE addExpr
+     *              | NOT? REGEXP addExpr
      *              | IS NOT? NULL
      *              | (EQ | LT | GT | LE | GE | NE) addExpr)*
      * ;
      * </pre>
      */
-    private Expression predict() throws SQLParseException {
+    private Expression predicate() throws SQLParseException {
         Expression left = addExpression();
         TokenType nextType = lexer.current().getType();
-        while (nextType == NOT || nextType == IN || nextType == LIKE || nextType == IS || nextType == EQ
-                || nextType == LT || nextType == GT || nextType == LE || nextType == GE || nextType == NE) {
+        while (nextType == NOT || nextType == IN || nextType == LIKE || nextType == REGEXP || nextType == IS
+                || nextType == EQ || nextType == LT || nextType == GT || nextType == LE || nextType == GE || nextType == NE) {
             if (nextType == EQ || nextType == LT || nextType == GT ||
                     nextType == LE || nextType == GE || nextType == NE) {
                 matchAny(EQ, LT, GT, LE, GE, NE);
@@ -487,8 +488,10 @@ public class Parser {
                 }
                 if ((lexer.current().getType() == LIKE)) {
                     match(LIKE);
-                    Expression right = addExpression();
-                    left = new LikeExpression(not, left, right);
+                    left = new LikeExpression(not, left, addExpression());
+                } else if (lexer.current().getType() == REGEXP) {
+                    match(REGEXP);
+                    left = new RegexpExpression(not, left, addExpression());
                 } else {
                     match(IN);
                     match(OPEN_PAR);

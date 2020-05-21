@@ -2,7 +2,9 @@ package com.github.afkbrb.sql;
 
 import com.github.afkbrb.sql.model.Table;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TableManager {
@@ -29,6 +31,10 @@ public class TableManager {
 
     public static TableManager getInstance() {
         return instance;
+    }
+
+    public List<Table> getTables() {
+        return new ArrayList<>(tableMap.values());
     }
 
     public void reset() {

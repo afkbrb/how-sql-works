@@ -123,20 +123,19 @@ public class LexerTest {
                 "DOT: .\n" +
                 "MULT: *\n" +
                 "NE: !=\n" +
-                "STRING_LITERAL: 'escape'\\nothing\n";
+                "STRING_LITERAL: \\\n" +
+                "STRING_LITERAL: 'escape'\n";
 
         String statements = "create table student(id int, name string, age int);\n" +
                 "insert into student (id, name, age) values(1, '小明', 20);\n" +
                 "select id, name As student_name, sum(age) from student where student.age = 20 and f() group by foo having bar order by something limit 10 offset 2333\n" +
-                "1+2 * 3 / 4 - 5 + (666.000 + 0.0 + 11111) a.b.c.d  a.*  != '\\'escape\\'\\nothing'";
+                "1+2 * 3 / 4 - 5 + (666.000 + 0.0 + 11111) a.b.c.d  a.*  != '\\\\' '\\'escape\\''";
 
         Lexer lexer = new Lexer(new StringReader(statements));
         StringBuilder sb = new StringBuilder();
         for (Token token = lexer.consume(); token.getType() != TokenType.EOF; token = lexer.consume()) {
             sb.append(token.getType().name()).append(": ").append(token.getText()).append("\n");
         }
-
-        System.out.println(sb);
-        // Assert.assertEquals(expected, sb.toString());
+        Assert.assertEquals(expected, sb.toString());
     }
 }

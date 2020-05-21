@@ -188,6 +188,13 @@ public class DefaultVisitor<T> implements Visitor<T> {
     }
 
     @Override
+    public T visit(RegexpExpression node) {
+        node.getLeft().accept(this);
+        node.getRight().accept(this);
+        return null;
+    }
+
+    @Override
     public T visit(UnaryExpression node) {
         node.getExpression().accept(this);
         return null;

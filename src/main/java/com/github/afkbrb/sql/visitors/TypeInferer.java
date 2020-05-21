@@ -119,6 +119,11 @@ public class TypeInferer extends DefaultVisitor<DataType> {
     }
 
     @Override
+    public DataType visit(RegexpExpression node) {
+        return INT;
+    }
+
+    @Override
     public DataType visit(UnaryExpression node) {
         return node.getExpression().accept(this);
     }
