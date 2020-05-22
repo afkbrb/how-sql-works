@@ -6,6 +6,7 @@ import com.github.afkbrb.sql.ast.statements.CreateStatement;
 import com.github.afkbrb.sql.model.Column;
 import com.github.afkbrb.sql.model.Table;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +17,7 @@ public class CreateExecutor extends Executor {
     /**
      * 根据 CreateStatement 创建一个表
      */
-    public static void doCreate(CreateStatement createStatement) throws SQLExecuteException {
+    public static void doCreate(CreateStatement createStatement) throws SQLExecuteException, IOException {
         String tableName = createStatement.getTableName();
         requireTableNotExists(tableName);
 

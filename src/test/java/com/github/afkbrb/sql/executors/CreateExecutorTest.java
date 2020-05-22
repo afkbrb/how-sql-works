@@ -7,11 +7,13 @@ import com.github.afkbrb.sql.model.Table;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 
 public class CreateExecutorTest extends ExecutorTest {
 
     @Test
-    public void test() throws SQLParseException, SQLExecuteException {
+    public void test() throws SQLParseException, SQLExecuteException, IOException {
         ExecutorTest.execute("create table student (id int, name string, age int, grade double)");
         Table student = TableManager.getInstance().getTable("student");
         Assert.assertEquals("{" +

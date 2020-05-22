@@ -7,12 +7,13 @@ import com.github.afkbrb.sql.ast.statements.DeleteStatement;
 import com.github.afkbrb.sql.model.Row;
 import com.github.afkbrb.sql.model.Table;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
 public class DeleteExecutor extends Executor {
 
-    public static void doDelete(DeleteStatement deleteStatement) throws SQLExecuteException {
+    public static void doDelete(DeleteStatement deleteStatement) throws SQLExecuteException, IOException {
         String tableName = deleteStatement.getTableName();
         Table table = requireTableExists(tableName);
         List<Row> rows = table.getRows();
@@ -20,5 +21,6 @@ public class DeleteExecutor extends Executor {
         for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
             if (predicate(table.getSchema(), iterator.next(), condition)) iterator.remove();
         }
+        updateTable(table);
     }
 }

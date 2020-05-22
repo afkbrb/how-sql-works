@@ -7,6 +7,7 @@ import com.github.afkbrb.sql.SQLParseException;
 import com.github.afkbrb.sql.model.Table;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.io.StringReader;
 
 
@@ -21,7 +22,7 @@ public class SelectExecutorTest extends ExecutorTest {
     }
 
     @Test
-    public void test() throws SQLParseException, SQLExecuteException {
+    public void test() throws SQLParseException, SQLExecuteException, IOException {
         execute("create table student (id int, name string, age int, grade double)");
         execute("insert into student values (1, 'squanchy', 20, 90.01)");
         execute("insert into student values (2, 'abc', 24, 66.6)");

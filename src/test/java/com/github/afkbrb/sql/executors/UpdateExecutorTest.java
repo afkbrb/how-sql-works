@@ -8,13 +8,15 @@ import com.github.afkbrb.sql.model.TypedValue;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 import static com.github.afkbrb.sql.model.DataType.*;
 
 public class UpdateExecutorTest extends ExecutorTest {
 
     @Test
     @SuppressWarnings("ConstantConditions")
-    public void test() throws SQLParseException, SQLExecuteException {
+    public void test() throws SQLParseException, SQLExecuteException, IOException {
         execute("create table student (id int, name string, age int, grade double)");
         execute("insert into student values (1, 'squanchy', 20, 90.01)");
         execute("insert into student values (2, 'abc', 24, 66.6)");

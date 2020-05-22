@@ -27,6 +27,16 @@ public class Shell {
     }
 
     public void serve(String[] args) {
+        if (args.length > 0) {
+            try {
+                TableManager.getInstance().setDbDir(new File(args[0]));
+                TableManager.getInstance().loadTables();
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+
         welcome();
         while (true) {
             try {
@@ -62,14 +72,13 @@ public class Shell {
                 } else {
                     DeleteExecutor.doDelete((DeleteStatement) statement);
                 }
-
             } catch (SQLParseException e) {
                 System.out.println("Syntax error: " + e.getMessage());
             } catch (SQLExecuteException e) {
                 System.out.println("Execute error: " + e.getMessage());
             } catch (Exception e) {
-                System.out.println("Unexpected exception: " + e.getMessage());
-                e.printStackTrace();
+                System.out.println("Unexpected error: " + e.getMessage());
+                e.printStackTrace(System.out);
             }
         }
 
@@ -81,7 +90,7 @@ public class Shell {
     }
 
     /**
-     * 从控制读取命令，允许多行输入。
+     * 从控制台读取命令，允许多行输入。
      * <p>
      * TODO: 用于可能输入奇怪的字符，需要处理转义
      */
@@ -126,6 +135,7 @@ public class Shell {
                     schema(split[1]);
                 }
                 break;
+            case ".table":
             case ".tables":
                 tables();
                 break;
@@ -143,11 +153,21 @@ public class Shell {
                     debug = split[1].equals("on");
                 }
                 break;
+            case ".": // 就像 shell 里面可以用 . 代替 source 一样
             case ".source":
                 if (split.length < 2) {
                     System.out.println("Usage: .source <filename>");
                 } else {
                     source(split[1]);
+                }
+                break;
+            case ".database":
+            case ".db":
+                if (split.length < 2) {
+                    System.out.println("Usage: .db <db directory>");
+                } else {
+                    TableManager.getInstance().setDbDir(new File(trimQuotes(split[1])));
+                    TableManager.getInstance().loadTables();
                 }
                 break;
             default:
@@ -160,9 +180,14 @@ public class Shell {
     private void welcome() {
         System.out.println("Welcome :)");
         System.out.println("Enter '.help' for usage hints");
+        if (TableManager.getInstance().getDbDir() == null) {
+            System.out.println("Connected to a transient in-memory database");
+            System.out.println("Use '.db <db directory>' to work on a persistent database");
+        }
     }
 
     private void help() {
+        System.out.printf("%-24s Change database directory\n", ".db <db directory>");
         System.out.printf("%-24s Change debug mode, ast will be echoed if set to on\n", ".debug <on | off>");
         System.out.printf("%-24s Exit this program\n", ".exit");
         System.out.printf("%-24s Show this message\n", ".help");
@@ -196,6 +221,7 @@ public class Shell {
 
     private void tables() {
         List<Table> tables = TableManager.getInstance().getTables();
+        if (tables.size() == 0) return;
         for (Table table : tables) {
             System.out.print(table.getTableName() + " ");
         }
@@ -204,10 +230,7 @@ public class Shell {
 
     private void source(String filename) throws IOException, SQLParseException, SQLExecuteException {
         // 去掉引号
-        if (filename.length() > 2 && (filename.charAt(0) == '"' && filename.charAt(filename.length() - 1) == '"')
-                || (filename.charAt(0) == '\'' && filename.charAt(filename.length() - 1) == '\'')) {
-            filename = filename.substring(1, filename.length() - 1);
-        }
+        filename = trimQuotes(filename);
 
         File file = new File(filename);
         if (!file.exists()) {
@@ -326,6 +349,15 @@ public class Shell {
 
     private void printJson(Table table) {
         System.out.println(prettify(table.toString()));
+    }
+
+
+    private static String trimQuotes(String s) {
+        if (s.length() > 2 && (s.charAt(0) == '"' && s.charAt(s.length() - 1) == '"')
+                || (s.charAt(0) == '\'' && s.charAt(s.length() - 1) == '\'')) {
+            s = s.substring(1, s.length() - 1);
+        }
+        return s;
     }
 
     private static String prettify(String jsonString) {

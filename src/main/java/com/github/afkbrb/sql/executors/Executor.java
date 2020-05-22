@@ -9,6 +9,7 @@ import com.github.afkbrb.sql.visitors.RowsEvaluator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,6 +17,10 @@ import static com.github.afkbrb.sql.model.DataType.DOUBLE;
 import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
 
 public abstract class Executor {
+
+    protected static void updateTable(Table table) throws IOException {
+        TableManager.getInstance().save(table);
+    }
 
     @NotNull
     protected static TypedValue evaluate(Expression expression) throws SQLExecuteException {

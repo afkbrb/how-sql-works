@@ -7,10 +7,12 @@ import com.github.afkbrb.sql.model.Table;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class InsertExecutorTest extends ExecutorTest {
 
     @Test
-    public void test() throws SQLParseException, SQLExecuteException {
+    public void test() throws SQLParseException, SQLExecuteException, IOException {
         execute("create table student (id int, name string, age int, grade double)");
         execute("insert into student values (1, '渣渣辉', 20 + 2 * (1 + 1), 66.6)");
         execute("insert into student values (1 + 1, null, null, null)");
@@ -47,7 +49,7 @@ public class InsertExecutorTest extends ExecutorTest {
      * 测试插入的列数和 value 个数不同。
      */
     @Test
-    public void differentTest() throws SQLParseException, SQLExecuteException {
+    public void differentTest() throws SQLParseException, SQLExecuteException, IOException {
         execute("create table student (id int, name string, age int, grade double)");
         Assert.assertThrows(SQLExecuteException.class, () -> execute("insert into student values (1, 'aaa', 20, 2333, 'one more')"));
     }

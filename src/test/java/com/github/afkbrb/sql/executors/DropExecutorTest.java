@@ -6,10 +6,12 @@ import com.github.afkbrb.sql.TableManager;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class DropExecutorTest extends ExecutorTest {
 
     @Test
-    public void test() throws SQLExecuteException, SQLParseException {
+    public void test() throws SQLExecuteException, SQLParseException, IOException {
         execute("create table student (id int, name string, age int, grade double)");
         Assert.assertNotNull(TableManager.getInstance().getTable("student"));
         execute("drop table student");

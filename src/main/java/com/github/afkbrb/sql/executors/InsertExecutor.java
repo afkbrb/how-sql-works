@@ -5,12 +5,13 @@ import com.github.afkbrb.sql.ast.expressions.Expression;
 import com.github.afkbrb.sql.ast.statements.InsertStatement;
 import com.github.afkbrb.sql.model.*;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 public class InsertExecutor extends Executor {
 
-    public static void doInsert(InsertStatement insertStatement) throws SQLExecuteException {
+    public static void doInsert(InsertStatement insertStatement) throws SQLExecuteException, IOException {
         String tableName = insertStatement.getTableName();
         Table table = requireTableExists(tableName);
 
@@ -41,5 +42,7 @@ public class InsertExecutor extends Executor {
 
         Row row = new Row(Arrays.asList(cells));
         table.addRow(row);
+
+        updateTable(table);
     }
 }

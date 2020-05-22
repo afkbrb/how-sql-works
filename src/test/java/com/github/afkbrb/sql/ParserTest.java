@@ -146,11 +146,11 @@ public class ParserTest {
 
     @Test
     public void expressionPrecedenceTest4() throws SQLParseException {
-        String statement = "select 1 + -1 * 2333 + -(1 * 2333) + --++1;";
+        String statement = "select 1 + -1 * 2333 + -(1 * 2333) + -+1;";
         Lexer lexer = new Lexer(new StringReader(statement));
         Parser parser = new Parser(lexer);
         List<Statement> statementList = parser.statementList();
-        Assert.assertEquals("SELECT (((1 + ((-1) * 2333)) + (-(1 * 2333))) + (-(-(+(+1)))));", statementList.get(0).toString());
+        Assert.assertEquals("SELECT (((1 + ((-1) * 2333)) + (-(1 * 2333))) + (-(+1)));", statementList.get(0).toString());
     }
 
     @Test
