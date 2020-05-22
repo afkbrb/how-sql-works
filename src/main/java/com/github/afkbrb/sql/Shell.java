@@ -11,6 +11,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static com.github.afkbrb.sql.utils.StringWidth.stringWidth;
@@ -42,7 +43,7 @@ public class Shell {
             try {
                 String command = readCommand();
                 // .quit 和 .exit 比较特殊，在此处理
-                if (command.equals(".quit") || command.equalsIgnoreCase(".exit")) {
+                if (command.equalsIgnoreCase(".quit") || command.equalsIgnoreCase(".exit")) {
                     System.out.println("Bye :)");
                     break;
                 }
@@ -96,20 +97,23 @@ public class Shell {
      */
     private String readCommand() throws IOException {
         StringBuilder sb = new StringBuilder();
-        boolean quote = false;
-        char last = ' ';
+        boolean needOneMoreQuote = false;
+        boolean lastIsEscape = false;
         System.out.print("SQL> ");
         String line = reader.readLine();
         if (line.trim().startsWith(".")) return line; // meta command
         while (true) {
             for (char current : line.toCharArray()) {
                 sb.append(current);
-                if (current == '\'' && last != '\\') {
-                    quote = !quote;
-                } else if (current == ';' && !quote) {
+                if (current == '\'' && !lastIsEscape) {
+                    needOneMoreQuote = !needOneMoreQuote;
+                } else if (current == ';' && !needOneMoreQuote) {
                     return sb.toString();
                 }
-                last = current;
+
+                // 考虑输入 '\\'
+                // \\ 结合了，对于后面的 '，上一个字符就不是转义字符了
+                lastIsEscape = current == '\\' && !lastIsEscape;
             }
             sb.append(' '); // 将换行处理成空格
             System.out.print("  -> ");
@@ -234,7 +238,7 @@ public class Shell {
 
         File file = new File(filename);
         if (!file.exists()) {
-            System.out.println("file '" + filename + "' doesn't exist");
+            System.out.println("File '" + filename + "' doesn't exist");
             return;
         }
         if (file.isDirectory()) {
@@ -242,14 +246,13 @@ public class Shell {
             return;
         }
         if (!file.canRead()) {
-            System.out.println("cannot read file '" + filename + "'");
+            System.out.println("Cannot read file '" + filename + "'");
             return;
         }
 
         System.out.println("Executing SQL statements from " + file.getCanonicalPath());
-        Reader reader = new BufferedReader(new FileReader(file));
-        Parser parser = new Parser(new Lexer(reader));
-        try {
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            Parser parser = new Parser(new Lexer(reader));
             List<Statement> statementList = parser.statementList();
             for (Statement statement : statementList) {
                 // 此处不执行 select
@@ -266,8 +269,6 @@ public class Shell {
                 }
             }
             System.out.println("Total SQL statements executed: " + statementList.size());
-        } finally {
-            reader.close();
         }
     }
 

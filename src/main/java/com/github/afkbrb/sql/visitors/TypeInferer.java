@@ -103,7 +103,7 @@ public class TypeInferer extends DefaultVisitor<DataType> {
                 }
             }
         } catch (SQLExecuteException e) {
-            e.printStackTrace();
+            // e.printStackTrace();
             return ERROR;
         }
     }

@@ -170,7 +170,7 @@ public class Lexer {
                 } else if (t == '\\') { // 对 \ 自身进行转义
                     sb.append('\\');
                 } else {
-                    throw new SQLParseException("expected '\\' or ''' after '\\', but got '%c'", (char) t);
+                    throw new SQLParseException("invalid escape, expected '\\' or ''' after '\\', but got '%c'", (char) t);
                 }
             } else {
                 sb.append((char) next);

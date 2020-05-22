@@ -34,7 +34,7 @@ public class Schema {
                     if (result == null) {
                         result = column;
                     } else {
-                        throw new SQLExecuteException("Column '%s.%s' in field list is ambiguous", tableName, column);
+                        throw new SQLExecuteException("Column '%s.%s' in field list is ambiguous", tableName, column.getColumnName());
                     }
                 }
             }
