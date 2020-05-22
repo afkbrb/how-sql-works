@@ -1,24 +1,20 @@
 package com.github.afkbrb.sql;
 
-import com.github.afkbrb.sql.ast.expressions.LikeExpression;
-import com.github.afkbrb.sql.ast.expressions.StringExpression;
-import com.github.afkbrb.sql.model.Row;
-import com.github.afkbrb.sql.model.Schema;
-import com.github.afkbrb.sql.model.TypedValue;
-import com.github.afkbrb.sql.visitors.AbstractEvaluator;
-import com.github.afkbrb.sql.visitors.RowEvaluator;
 import org.junit.Test;
 
-import java.util.Arrays;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 /**
  * 这不算测试。
  */
 public class VisitorDemo {
 
-    @Test
-    public void test() {
-        System.out.println("a+".matches("a\\+"));
+    public static void main(String[] args) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+        String s = bufferedReader.readLine();
+        System.out.print(s);
     }
 
     private static class Visitor {
@@ -54,7 +50,8 @@ public class VisitorDemo {
         }
     }
 
-    public static void main(String[] args) {
+    @Test
+    public void test() {
         Visitor visitor = new Visitor();
         Father father = new Father();
         father.accept(visitor); // father

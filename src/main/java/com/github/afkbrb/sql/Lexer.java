@@ -63,11 +63,23 @@ public class Lexer {
             case '+':
                 return new Token(ADD, "+");
             case '-':
-                return new Token(MINUS, "-");
+                if (nextChar() == '-') {
+                    getSingleLineComment();
+                    return next();
+                } else {
+                    rollback();
+                    return new Token(MINUS, "-");
+                }
             case '*':
                 return new Token(MULT, "*");
             case '/':
-                return new Token(DIV, "/");
+                if (nextChar() == '*') {
+                    getMultiLineComment();
+                    return next();
+                } else {
+                    rollback();
+                    return new Token(DIV, "/");
+                }
             case ',':
                 return new Token(COMMA, ",");
             case '.':
@@ -120,6 +132,25 @@ public class Lexer {
         }
     }
 
+    // --...
+    private void getSingleLineComment() throws SQLParseException {
+        for (int next = nextChar(); next != -1; next = nextChar()) {
+            if (next == '\n') return;
+        }
+        throw new SQLParseException("unexpected EOF");
+    }
+
+    // /*...*/
+    private void getMultiLineComment() throws SQLParseException {
+        for (int next = nextChar(); next != -1; next = nextChar()) {
+            if (next == '*') {
+                if (nextChar() == '/') return;
+                else rollback();
+            }
+        }
+        throw new SQLParseException("unexpected EOF");
+    }
+
     /**
      * 要求所有字符串由双引号围起来。
      */
@@ -136,7 +167,7 @@ public class Lexer {
                     throw new SQLParseException("unexpected EOF");
                 } else if (t == '\'') {
                     sb.append('\'');
-                } else if (t == '\\'){ // 对 \ 自身进行转义
+                } else if (t == '\\') { // 对 \ 自身进行转义
                     sb.append('\\');
                 } else {
                     throw new SQLParseException("expected '\\' or ''' after '\\', but got '%c'", (char) t);

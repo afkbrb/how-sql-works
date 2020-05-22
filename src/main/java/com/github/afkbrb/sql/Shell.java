@@ -10,10 +10,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.StringReader;
+import java.io.*;
 import java.util.List;
 
 import static com.github.afkbrb.sql.utils.StringWidth.stringWidth;
@@ -23,51 +20,49 @@ public class Shell {
     private Mode mode = Mode.COLUMN;
     private boolean debug = false;
 
+    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
     public static void main(String[] args) {
         new Shell().serve(args);
     }
 
     public void serve(String[] args) {
         welcome();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         while (true) {
             try {
-                System.out.print("SQL> ");
-
-                String statements = reader.readLine().trim();
-                if (statements.length() == 0) continue;
+                String command = readCommand();
                 // .quit 和 .exit 比较特殊，在此处理
-                if (statements.equalsIgnoreCase(".quit") || statements.equalsIgnoreCase(".exit")) {
+                if (command.equals(".quit") || command.equalsIgnoreCase(".exit")) {
                     System.out.println("Bye :)");
                     break;
                 }
-                if (handleMetaCommand(statements)) continue;
+                if (handleMetaCommand(command)) continue;
 
-                Lexer lexer = new Lexer(new StringReader(statements));
+                Lexer lexer = new Lexer(new StringReader(command));
                 Parser parser = new Parser(lexer);
-                List<Statement> statementList;
-                statementList = parser.statementList();
-                for (Statement statement : statementList) {
-                    if (debug) System.out.println(statement);
-                    if (statement instanceof SelectStatement) {
-                        Table table = new SelectExecutor().doSelect((SelectStatement) statement);
-                        if (mode == Mode.COLUMN) {
-                            printColumn(table);
-                        } else {
-                            printJson(table);
-                        }
-                    } else if (statement instanceof CreateStatement) {
-                        CreateExecutor.doCreate((CreateStatement) statement);
-                    } else if (statement instanceof DropStatement) {
-                        DropExecutor.doDrop((DropStatement) statement);
-                    } else if (statement instanceof InsertStatement) {
-                        InsertExecutor.doInsert((InsertStatement) statement);
-                    } else if (statement instanceof UpdateStatement) {
-                        UpdateExecutor.doUpdate((UpdateStatement) statement);
+                Statement statement = parser.statementList().get(0);
+
+                if (debug) System.out.println(statement);
+
+                if (statement instanceof SelectStatement) {
+                    Table table = new SelectExecutor().doSelect((SelectStatement) statement);
+                    if (mode == Mode.COLUMN) {
+                        printColumn(table);
                     } else {
-                        DeleteExecutor.doDelete((DeleteStatement) statement);
+                        printJson(table);
                     }
+                } else if (statement instanceof CreateStatement) {
+                    CreateExecutor.doCreate((CreateStatement) statement);
+                } else if (statement instanceof DropStatement) {
+                    DropExecutor.doDrop((DropStatement) statement);
+                } else if (statement instanceof InsertStatement) {
+                    InsertExecutor.doInsert((InsertStatement) statement);
+                } else if (statement instanceof UpdateStatement) {
+                    UpdateExecutor.doUpdate((UpdateStatement) statement);
+                } else {
+                    DeleteExecutor.doDelete((DeleteStatement) statement);
                 }
+
             } catch (SQLParseException e) {
                 System.out.println("Syntax error: " + e.getMessage());
             } catch (SQLExecuteException e) {
@@ -86,61 +81,99 @@ public class Shell {
     }
 
     /**
+     * 从控制读取命令，允许多行输入。
+     * <p>
+     * TODO: 用于可能输入奇怪的字符，需要处理转义
+     */
+    private String readCommand() throws IOException {
+        StringBuilder sb = new StringBuilder();
+        boolean quote = false;
+        char last = ' ';
+        System.out.print("SQL> ");
+        String line = reader.readLine();
+        if (line.trim().startsWith(".")) return line; // meta command
+        while (true) {
+            for (char current : line.toCharArray()) {
+                sb.append(current);
+                if (current == '\'' && last != '\\') {
+                    quote = !quote;
+                } else if (current == ';' && !quote) {
+                    return sb.toString();
+                }
+                last = current;
+            }
+            sb.append(' '); // 将换行处理成空格
+            System.out.print("  -> ");
+            line = reader.readLine();
+        }
+    }
+
+    /**
      * 仿 sqlite 元命令。
      */
-    private boolean handleMetaCommand(String command) {
+    private boolean handleMetaCommand(String command) throws IOException, SQLParseException, SQLExecuteException {
         String[] split = command.trim().toLowerCase().split("\\s+");
         if (split.length == 0) return true; // 什么都不做
+        if (!split[0].startsWith(".")) return false;
         switch (split[0]) {
             case ".help":
                 help();
-                return true;
+                break;
             case ".schema":
                 if (split.length < 2) {
                     System.out.println("Usage: .schema <table name>");
                 } else {
                     schema(split[1]);
                 }
-                return true;
+                break;
             case ".tables":
                 tables();
-                return true;
+                break;
             case ".mode":
                 if (split.length < 2 || !(split[1].equals("column") || split[1].equals("json"))) {
                     System.out.println("Usage: .mode <column | json>");
                 } else {
                     mode = split[1].equals("column") ? Mode.COLUMN : Mode.JSON;
                 }
-                return true;
+                break;
             case ".debug":
                 if (split.length < 2 || !(split[1].equals("on") || split[1].equals("off"))) {
                     System.out.println("Usage: .debug <on | off>");
                 } else {
                     debug = split[1].equals("on");
                 }
-                return true;
+                break;
+            case ".source":
+                if (split.length < 2) {
+                    System.out.println("Usage: .source <filename>");
+                } else {
+                    source(split[1]);
+                }
+                break;
             default:
-                return false;
+                System.out.println("Unknown meta command '" + split[0] + "', enter '.help' for usage hints");
+                break;
         }
+        return true;
     }
-
 
     private void welcome() {
         System.out.println("Welcome :)");
-        System.out.println("Enter \".help\" from for usage hints");
+        System.out.println("Enter '.help' for usage hints");
     }
 
-    private static void help() {
+    private void help() {
         System.out.printf("%-24s Change debug mode, ast will be echoed if set to on\n", ".debug <on | off>");
         System.out.printf("%-24s Exit this program\n", ".exit");
         System.out.printf("%-24s Show this message\n", ".help");
         System.out.printf("%-24s Set output mode of select statements\n", ".mode <column | json>");
         System.out.printf("%-24s Exit this program\n", ".quit");
         System.out.printf("%-24s Show the description of a table\n", ".schema <table name>");
+        System.out.printf("%-24s Execute SQL statements from a file\n", ".source <filename>");
         System.out.printf("%-24s Show all tables\n", ".tables");
     }
 
-    private static void schema(String tableName) {
+    private void schema(String tableName) {
         Table table = TableManager.getInstance().getTable(tableName);
         if (table == null) {
             System.out.println("Table \"" + tableName + "\" not found");
@@ -161,7 +194,7 @@ public class Shell {
         }
     }
 
-    private static void tables() {
+    private void tables() {
         List<Table> tables = TableManager.getInstance().getTables();
         for (Table table : tables) {
             System.out.print(table.getTableName() + " ");
@@ -169,8 +202,54 @@ public class Shell {
         System.out.println();
     }
 
+    private void source(String filename) throws IOException, SQLParseException, SQLExecuteException {
+        // 去掉引号
+        if (filename.length() > 2 && (filename.charAt(0) == '"' && filename.charAt(filename.length() - 1) == '"')
+                || (filename.charAt(0) == '\'' && filename.charAt(filename.length() - 1) == '\'')) {
+            filename = filename.substring(1, filename.length() - 1);
+        }
+
+        File file = new File(filename);
+        if (!file.exists()) {
+            System.out.println("file '" + filename + "' doesn't exist");
+            return;
+        }
+        if (file.isDirectory()) {
+            System.out.println("'" + filename + "' is a directory");
+            return;
+        }
+        if (!file.canRead()) {
+            System.out.println("cannot read file '" + filename + "'");
+            return;
+        }
+
+        System.out.println("Executing SQL statements from " + file.getCanonicalPath());
+        Reader reader = new BufferedReader(new FileReader(file));
+        Parser parser = new Parser(new Lexer(reader));
+        try {
+            List<Statement> statementList = parser.statementList();
+            for (Statement statement : statementList) {
+                // 此处不执行 select
+                if (statement instanceof CreateStatement) {
+                    CreateExecutor.doCreate((CreateStatement) statement);
+                } else if (statement instanceof DropStatement) {
+                    DropExecutor.doDrop((DropStatement) statement);
+                } else if (statement instanceof InsertStatement) {
+                    InsertExecutor.doInsert((InsertStatement) statement);
+                } else if (statement instanceof UpdateStatement) {
+                    UpdateExecutor.doUpdate((UpdateStatement) statement);
+                } else if (statement instanceof DeleteStatement) {
+                    DeleteExecutor.doDelete((DeleteStatement) statement);
+                }
+            }
+            System.out.println("Total SQL statements executed: " + statementList.size());
+        } finally {
+            reader.close();
+        }
+    }
+
     @SuppressWarnings("all")
-    private static void printColumn(Table table) {
+    private void printColumn(Table table) {
         if (table.getColumnCount() == 0 || table.getRowCount() == 0) return;
         int[] width = new int[table.getColumnCount()];
         for (int i = 0; i < width.length; i++) {

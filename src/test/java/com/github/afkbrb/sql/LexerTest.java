@@ -138,4 +138,27 @@ public class LexerTest {
         }
         Assert.assertEquals(expected, sb.toString());
     }
+
+    @Test
+    public void commentTest() throws SQLParseException {
+        String expected = "SELECT: SELECT\n" +
+                "INT_LITERAL: 1\n" +
+                "ADD: +\n" +
+                "INT_LITERAL: 1\n" +
+                "SEMICOLON: ;\n" +
+                "STRING_LITERAL: -- this single line comment should be read\n" +
+                "STRING_LITERAL: /* this multi lines comment should be read, too */\n";
+        String statements = "-- fjdlsjfldsjfldsjfldsjfkd\n" +
+                " -- fjdlksjfsl select * from test; \n " +
+                "select 1 + 1; '-- this single line comment should be read'" +
+                "'/* this multi lines comment should be read, too */'" +
+                "/************ / */" +
+                " /*--\n\n\n\n*/";
+        Lexer lexer = new Lexer(new StringReader(statements));
+        StringBuilder sb = new StringBuilder();
+        for (Token token = lexer.consume(); token.getType() != TokenType.EOF; token = lexer.consume()) {
+            sb.append(token.getType().name()).append(": ").append(token.getText()).append("\n");
+        }
+        Assert.assertEquals(expected, sb.toString());
+    }
 }
