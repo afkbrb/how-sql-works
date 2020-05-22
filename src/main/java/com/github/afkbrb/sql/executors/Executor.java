@@ -19,7 +19,7 @@ import static com.github.afkbrb.sql.utils.DataTypeUtils.*;
 public abstract class Executor {
 
     protected static void updateTable(Table table) throws IOException {
-        TableManager.getInstance().save(table);
+        TableManager.getInstance().saveTable(table);
     }
 
     @NotNull

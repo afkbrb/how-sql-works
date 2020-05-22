@@ -13,7 +13,7 @@ public class ExecutorTest {
      */
     @Before
     public void reset() throws IOException {
-        TableManager.getInstance().reset();
+        TableManager.getInstance().clear();
     }
 
     protected static void execute(String statement) throws SQLParseException, SQLExecuteException, IOException {
