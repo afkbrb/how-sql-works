@@ -59,6 +59,7 @@ public class SelectExecutor extends Executor {
         Schema schema = referenceTable.getSchema();
         List<Row> rows = new ArrayList<>(referenceTable.getRows());
 
+        // WHERE condition
         if (selectStatement.getWhereCondition() != null) {
             for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
                 if (!predicate(context, schema, iterator.next(), selectStatement.getWhereCondition())) iterator.remove();
@@ -93,7 +94,7 @@ public class SelectExecutor extends Executor {
             }
         }
 
-        // 从 selectItemList 中把 expression 单独抽出来，便于后面使用
+        // 从 selectItemList 中把 expression 单独抽出来，便于后面使用。
         List<Expression> selectExpressionList = new ArrayList<>();
         selectItemList.forEach(pair -> selectExpressionList.add(pair.getKey()));
 
@@ -108,7 +109,7 @@ public class SelectExecutor extends Executor {
         }
         Table table = new Table(tableName, columnList);
 
-        int limit = Integer.MAX_VALUE;
+        int limit = rows.size(); // 查询结果最多也就 rows.size() 条记录
         int offset = 0;
         if (selectStatement.getLimit() != null) {
             TypedValue evaluatedLimit = evaluate(context, selectStatement.getLimit().getLimitExpression());
@@ -132,7 +133,7 @@ public class SelectExecutor extends Executor {
         }
 
         if (!isGroupBy && !isAggregate) {
-            // 如果需要排序的话，先对 rows 进行排序
+            // 如果需要排序的话，先对 rows 进行排序。
             if (selectStatement.getOrderBy() != null) {
                 OrderBy orderBy = selectStatement.getOrderBy();
                 List<Pair<Expression, Boolean>> orderByList = orderBy.getOrderByList();
@@ -140,6 +141,8 @@ public class SelectExecutor extends Executor {
             }
 
             // 填充数据
+            // 简单优化：根据 limit 和 offset 来确定需要往查询结果中添加的记录数，
+            // 而不是添加完所有记录后再进行 limit 和 offset。
             int upperBound = Math.min(rows.size(), offset + limit);
             for (int i = offset; i < upperBound; i++) {
                 Row row = rows.get(i);
@@ -190,6 +193,7 @@ public class SelectExecutor extends Executor {
                 sortGroups(groupEntryList, schema, orderByList);
             }
 
+            // limit/offset 优化
             int upperBound = Math.min(groupEntryList.size(), offset + limit);
             for (int i = offset; i < upperBound; i++) {
                 List<Row> groupRows = groupEntryList.get(i).getValue();
@@ -348,6 +352,7 @@ public class SelectExecutor extends Executor {
                 newCells.addAll(leftRow.getCells());
                 newCells.addAll(rightRow.getCells());
                 Row newRow = new Row(newCells);
+                // 简单优化：符合条件再连接，而不是连接后再根据条件过滤
                 if (predicate(context, schema, newRow, condition)) {
                     newTable.addRow(newRow);
                     needLeftJoin[i] = false;

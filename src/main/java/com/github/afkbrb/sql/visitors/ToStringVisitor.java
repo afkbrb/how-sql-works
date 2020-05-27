@@ -34,9 +34,9 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         sb.append("(");
         boolean first = true;
         for (CreateStatement.ColumnDefinition columnDefinition : node.getColumnDefinitionList()) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             sb.append(columnDefinition.getColumnName()).append(" ").append(columnDefinition.getColumnType());
-            first = false;
         }
         sb.append(")");
         return null;
@@ -65,9 +65,9 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
             sb.append("(");
             boolean first = true;
             for (String columnName : node.getColumnList()) {
-                if (!first) sb.append(", ");
+                if (first) first = false;
+                else sb.append(", ");
                 sb.append(columnName);
-                first = false;
             }
             sb.append(") ");
         }
@@ -77,9 +77,9 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         sb.append("(");
         boolean first = true;
         for (Expression value : node.getValueList()) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             value.accept(this);
-            first = false;
         }
         sb.append(")");
         return null;
@@ -88,9 +88,9 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
     private void appendExpressionList(List<Expression> expressionList) {
         boolean first = true;
         for (Expression expression : expressionList) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             expression.accept(this);
-            first = false;
         }
     }
 
@@ -100,12 +100,12 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
 
         boolean first = true;
         for (Pair<Expression, String> pair : node.getSelectItemList()) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             pair.getKey().accept(this);
             if (pair.getValue() != null) {
                 sb.append(" AS ").append(pair.getValue());
             }
-            first = false;
         }
 
         if (node.getTableReference() != null) {
@@ -142,11 +142,11 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         sb.append("UPDATE ").append(node.getTableName()).append(" SET ");
         boolean first = true;
         for (Pair<String, Expression> pair : node.getUpdateList()) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             sb.append(pair.getKey());
             sb.append(" = ");
             pair.getValue().accept(this);
-            first = false;
         }
 
         if (node.getWhereCondition() != null) {
@@ -209,11 +209,11 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         List<Pair<Expression, Boolean>> orderByList = orderBy.getOrderByList();
         boolean first = true;
         for (Pair<Expression, Boolean> pair : orderByList) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             pair.getKey().accept(this);
             sb.append(" ");
             sb.append(pair.getValue() ? "DESC" : "ASC");
-            first = false;
         }
         return null;
     }
@@ -258,9 +258,9 @@ public class ToStringVisitor extends DefaultVisitor<Void> {
         sb.append(node.getFunctionName()).append("(");
         boolean first = true;
         for (Expression argument : node.getArgumentList()) {
-            if (!first) sb.append(", ");
+            if (first) first = false;
+            else sb.append(", ");
             argument.accept(this);
-            first = false;
         }
         sb.append(")");
         return null;

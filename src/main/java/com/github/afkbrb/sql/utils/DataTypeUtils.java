@@ -30,6 +30,10 @@ public final class DataTypeUtils {
         return typedValue.getDataType() == NULL;
     }
 
+    public static boolean isErrorOrNull(TypedValue typedValue) {
+        return typedValue.getDataType() == ERROR || typedValue.getDataType() == NULL;
+    }
+
     private DataTypeUtils() {
     }
 

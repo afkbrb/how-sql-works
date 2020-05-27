@@ -37,10 +37,9 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue target = node.getTarget().accept(this);
         TypedValue left = node.getLeft().accept(this);
         TypedValue right = node.getRight().accept(this);
-        if (isError(target)) return target;
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(target) || isNull(left) || isNull(right)) return TypedValue.NULL;
+        if (isErrorOrNull(target)) return target;
+        if (isErrorOrNull(left)) return left;
+        if (isErrorOrNull(right)) return right;
         if (isString(target) && isString(left) && isString(right)) {
             String targetSt = (String) target.getValue();
             String leftStr = (String) left.getValue();
@@ -60,9 +59,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     public TypedValue visit(BinaryExpression node) {
         TypedValue left = node.getLeft().accept(this);
         TypedValue right = node.getRight().accept(this);
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(left) || isNull(right)) return TypedValue.NULL;
+        if (isErrorOrNull(left)) return left;
+        if (isErrorOrNull(right)) return right;
         if (isNumber(left) && isNumber(right)) {
             double leftVal = ((Number) left.getValue()).doubleValue();
             double rightVal = ((Number) right.getValue()).doubleValue();
@@ -156,6 +154,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     @Override
     public TypedValue visit(InSubQueryExpression node) {
         TypedValue target = node.getTarget().accept(this);
+        if (isError(target)) return target;
         SelectStatement subQuery = node.getSubQuery();
         try {
             Table table = doSubQuery(subQuery);
@@ -303,9 +302,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     public TypedValue visit(LikeExpression node) {
         TypedValue left = node.getLeft().accept(this);
         TypedValue right = node.getRight().accept(this);
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(left) || isNull(right)) return TypedValue.NULL;
+        if (isErrorOrNull(left)) return left;
+        if (isErrorOrNull(right)) return right;
         if (isString(left) && isString(right)) {
             String leftStr = (String) left.getValue();
             String rightStr = (String) right.getValue();
@@ -360,9 +358,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     public TypedValue visit(RegexpExpression node) {
         TypedValue left = node.getLeft().accept(this);
         TypedValue right = node.getRight().accept(this);
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(left) || isNull(right)) return TypedValue.NULL;
+        if (isErrorOrNull(left)) return left;
+        if (isErrorOrNull(right)) return right;
         if (isString(left) && isString(right)) {
             String leftStr = (String) left.getValue();
             String rightStr = (String) right.getValue();
@@ -383,8 +380,7 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
     @Override
     public TypedValue visit(UnaryExpression node) {
         TypedValue typedValue = node.getExpression().accept(this);
-        if (isError(typedValue)) return typedValue;
-        if (isNull(typedValue)) return TypedValue.NULL;
+        if (isErrorOrNull(typedValue)) return typedValue;
         if (isNumber(typedValue)) {
             double value = ((Number) typedValue.getValue()).doubleValue();
             switch (node.getOp()) {
@@ -407,39 +403,52 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
 
     @Override
     public TypedValue visit(AndExpression node) {
+        // 逻辑短路优化
         TypedValue left = node.getLeft().accept(this);
-        TypedValue right = node.getRight().accept(this);
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(left) || isNull(right)) return TypedValue.NULL;
-        if (isNumber(left) && isNumber(right)) {
-            double leftVal = ((Number) left.getValue()).doubleValue();
-            double rightVal = ((Number) right.getValue()).doubleValue();
-            return new TypedValue(INT, leftVal == 0 || rightVal == 0 ? 0 : 1);
+        if (isErrorOrNull(left)) return left;
+        if (isNumber(left)) {
+            double leftValue = ((Number) left.getValue()).doubleValue();
+            if (leftValue == 0) return new TypedValue(INT, 0);
+        } else {
+            return new EvaluateError("expected two numbers");
         }
-        return new EvaluateError("expected two numbers");
+
+        TypedValue right = node.getRight().accept(this);
+        if (isErrorOrNull(right)) return right;
+        if (isNumber(right)) {
+            double rightValue = ((Number) right.getValue()).doubleValue();
+            return new TypedValue(INT, toInt(rightValue != 0));
+        } else {
+            return new EvaluateError("expected two numbers");
+        }
     }
 
     @Override
     public TypedValue visit(OrExpression node) {
+        // 逻辑短路优化
         TypedValue left = node.getLeft().accept(this);
-        TypedValue right = node.getRight().accept(this);
-        if (isError(left)) return left;
-        if (isError(right)) return right;
-        if (isNull(left) || isNull(right)) return TypedValue.NULL;
-        if (isNumber(left) && isNumber(right)) {
-            double leftVal = ((Number) left.getValue()).doubleValue();
-            double rightVal = ((Number) right.getValue()).doubleValue();
-            return new TypedValue(INT, toInt(leftVal != 0 || rightVal != 0));
+        if (isErrorOrNull(left)) return left;
+        if (isNumber(left)) {
+            double leftValue = ((Number) left.getValue()).doubleValue();
+            if (leftValue != 0) return new TypedValue(INT, 1);
+        } else {
+            return new EvaluateError("expected two numbers");
         }
-        return new EvaluateError("expected two numbers");
+
+        TypedValue right = node.getRight().accept(this);
+        if (isErrorOrNull(right)) return right;
+        if (isNumber(right)) {
+            double rightValue = ((Number) right.getValue()).doubleValue();
+            return new TypedValue(INT, toInt(rightValue != 0));
+        } else {
+            return new EvaluateError("expected two numbers");
+        }
     }
 
     @Override
     public TypedValue visit(NotExpression node) {
         TypedValue typedValue = node.getExpression().accept(this);
-        if (isError(typedValue)) return typedValue;
-        if (isNull(typedValue)) return TypedValue.NULL;
+        if (isErrorOrNull(typedValue)) return typedValue;
         if (isNumber(typedValue)) {
             double value = ((Number) typedValue.getValue()).doubleValue();
             return new TypedValue(INT, toInt(value == 0));

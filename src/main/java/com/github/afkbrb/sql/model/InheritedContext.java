@@ -14,6 +14,7 @@ import java.util.Objects;
  */
 public class InheritedContext {
 
+    // 当作 Stack 来使用
     private final List<Pair<Schema, Row>> context = new LinkedList<>();
 
     /**
@@ -59,7 +60,7 @@ public class InheritedContext {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(row);
         if (schema.size() != row.size()) throw new IllegalArgumentException("schema and row must have the same size");
-        context.add(0, new Pair<>(schema, row));
+        context.add(0, new Pair<>(schema, row)); // 添加到头部
     }
 
     /**
@@ -67,6 +68,6 @@ public class InheritedContext {
      */
     public void pop() {
         if (context.size() == 0) throw new IllegalStateException("context is empty");
-        context.remove(0);
+        context.remove(0); // 移除头部
     }
 }
