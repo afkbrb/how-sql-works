@@ -348,8 +348,8 @@ public class Parser {
     /**
      * <pre>
      * tableFactor
-     *     : tableName (AS? tableNameAlias)?
-     *     | OPEN_PAR selectStatement CLOSE_PAR AS? tableNameAlias // 要求派生表用于别名
+     *     : tableName (AS? alias)?
+     *     | OPEN_PAR selectStatement CLOSE_PAR AS? alias // 要求派生表用于别名
      *     | OPEN_PAR tableReference CLOSE_PAR
      * ;
      * </pre>
@@ -433,7 +433,7 @@ public class Parser {
     /**
      * <pre>
      * betweenExpr
-     *     : BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
+     *     : predict BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
      *     | predict
      * ;
      * </pre>

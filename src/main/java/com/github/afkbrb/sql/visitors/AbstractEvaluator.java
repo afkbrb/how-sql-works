@@ -407,8 +407,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue left = node.getLeft().accept(this);
         if (isErrorOrNull(left)) return left;
         if (isNumber(left)) {
-            double leftValue = ((Number) left.getValue()).doubleValue();
-            if (leftValue == 0) return new TypedValue(INT, 0);
+            double leftVal = ((Number) left.getValue()).doubleValue();
+            if (leftVal == 0) return new TypedValue(INT, 0);
         } else {
             return new EvaluateError("expected two numbers");
         }
@@ -416,8 +416,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isErrorOrNull(right)) return right;
         if (isNumber(right)) {
-            double rightValue = ((Number) right.getValue()).doubleValue();
-            return new TypedValue(INT, toInt(rightValue != 0));
+            double rightVal = ((Number) right.getValue()).doubleValue();
+            return new TypedValue(INT, toInt(rightVal != 0));
         } else {
             return new EvaluateError("expected two numbers");
         }
@@ -429,8 +429,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue left = node.getLeft().accept(this);
         if (isErrorOrNull(left)) return left;
         if (isNumber(left)) {
-            double leftValue = ((Number) left.getValue()).doubleValue();
-            if (leftValue != 0) return new TypedValue(INT, 1);
+            double leftVal = ((Number) left.getValue()).doubleValue();
+            if (leftVal != 0) return new TypedValue(INT, 1);
         } else {
             return new EvaluateError("expected two numbers");
         }
@@ -438,8 +438,8 @@ public abstract class AbstractEvaluator extends DefaultVisitor<TypedValue> {
         TypedValue right = node.getRight().accept(this);
         if (isErrorOrNull(right)) return right;
         if (isNumber(right)) {
-            double rightValue = ((Number) right.getValue()).doubleValue();
-            return new TypedValue(INT, toInt(rightValue != 0));
+            double rightVal = ((Number) right.getValue()).doubleValue();
+            return new TypedValue(INT, toInt(rightVal != 0));
         } else {
             return new EvaluateError("expected two numbers");
         }
