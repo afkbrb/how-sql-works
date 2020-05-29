@@ -1,0 +1,4 @@
+"id","name","teacher"
+"INT","STRING","INT"
+1,"数据库",1
+2,"微积分",2

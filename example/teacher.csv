@@ -1,0 +1,4 @@
+"id","name","department"
+"INT","STRING","STRING"
+1,"王德法","计算机学院"
+2,"张伟","数学学院"
