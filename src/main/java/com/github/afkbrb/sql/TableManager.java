@@ -129,11 +129,11 @@ public class TableManager {
         }
 
         public void loadTable() throws IOException {
-            String tableName = file.getName();
-            if (!tableName.endsWith(".csv")) {
-                throw new IOException("invalid format of '" + tableName + "': expected a csv file");
+            String filename = file.getName();
+            if (!filename.endsWith(".csv")) {
+                throw new IOException("invalid format of '" + filename + "': expected a csv file");
             }
-            tableName = tableName.substring(0, tableName.length() - 4);
+            String tableName = filename.substring(0, filename.length() - 4);
             if (TableManager.getInstance().getTable(tableName) != null) {
                 System.out.println("Warning: table '" + tableName + "' already exists, it will be overridden");
                 TableManager.getInstance().removeTable(tableName);

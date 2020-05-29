@@ -1,6 +1,6 @@
 /**
  * .source demo
- * 注意，.source 的输入文件中不能包含 .source, .mode, .help 这样的元命令，
+ * 注意，.source 的输入文件中不能包含元命令，
  * 只能包含 create, insert, update, select, delete, drop 语句。
  * 执行时 select 语句将 *被忽略*。
  */

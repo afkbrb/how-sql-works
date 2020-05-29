@@ -17,7 +17,8 @@ public class InsertExecutor extends Executor {
 
         Schema schema = table.getSchema();
         List<String> columnNameList = insertStatement.getColumnList();
-        if (columnNameList.size() == 0) { // 省略了列，则表示全部列，此时就没必要检查列名是否合法了
+        // 省略了列的话，就默认为所有列
+        if (columnNameList.size() == 0) {
             schema.getColumns().forEach(column -> columnNameList.add(column.getColumnName()));
         }
 
@@ -30,7 +31,7 @@ public class InsertExecutor extends Executor {
 
         for (int i = 0; i < columnNameList.size(); i++) {
             Column column = schema.getColumn(columnNameList.get(i));
-            if (column == null) throw new SQLExecuteException("Column %s doesn't exist", columnNameList.get(i));;
+            if (column == null) throw new SQLExecuteException("Column %s doesn't exist", columnNameList.get(i));
             DataType expectedType = column.getDataType();
             TypedValue typedValue = evaluate(valueList.get(i)); // 我们要求插入的数据不包含列名
             cells[column.getColumnIndex()] = new Cell(ensureDataType(expectedType, typedValue));
@@ -43,6 +44,6 @@ public class InsertExecutor extends Executor {
         Row row = new Row(Arrays.asList(cells));
         table.addRow(row);
 
-        updateTable(table);
+        saveTable(table);
     }
 }

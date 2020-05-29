@@ -22,10 +22,10 @@ public class ExecutorTest {
         String action = statement.split("\\s+")[0].toLowerCase();
         switch (action) {
             case "create":
-                CreateExecutor.doCreate(parser.createTableStatement());
+                CreateExecutor.doCreate(parser.createStatement());
                 break;
             case "drop":
-                DropExecutor.doDrop(parser.dropTableStatement());
+                DropExecutor.doDrop(parser.dropStatement());
                 break;
             case "insert":
                 InsertExecutor.doInsert(parser.insertStatement());

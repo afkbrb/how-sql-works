@@ -13,7 +13,7 @@ import java.util.List;
 import static com.github.afkbrb.sql.TokenType.*;
 
 /**
- * 无脑递归下降就完事了。
+ * 递归下降分析器。
  */
 public class Parser {
 
@@ -34,7 +34,7 @@ public class Parser {
      */
     public List<Statement> statementList() throws SQLParseException {
         List<Statement> statementList = new ArrayList<>();
-        while (lexer.current().getType() != EOF) {
+        while (lexer.currentType() != EOF) {
             Statement statement = statement();
             statementList.add(statement);
             match(SEMICOLON);
@@ -46,12 +46,12 @@ public class Parser {
     /**
      * <pre>
      * statement
-     *     : createTableStatement
-     *     | dropTableStatement
+     *     : createStatement
+     *     | dropStatement
      *     | insertStatement
-     *     | selectStatement
      *     | updateStatement
      *     | deleteStatement
+     *     | selectStatement
      * ;
      * </pre>
      * <p>
@@ -61,9 +61,9 @@ public class Parser {
         Token token = lexer.current();
         switch (token.getType()) {
             case CREATE:
-                return createTableStatement();
+                return createStatement();
             case DROP:
-                return dropTableStatement();
+                return dropStatement();
             case INSERT:
                 return insertStatement();
             case SELECT:
@@ -88,7 +88,7 @@ public class Parser {
      * ;
      * </pre>
      */
-    public CreateStatement createTableStatement() throws SQLParseException {
+    public CreateStatement createStatement() throws SQLParseException {
         match(CREATE);
         match(TABLE);
         String tableName = match(IDENTIFIER).getText();
@@ -98,7 +98,7 @@ public class Parser {
         DataType dataType = tokenTypeToDataType(matchAny(INT, DOUBLE, STRING).getType());
         CreateStatement.ColumnDefinition columnDefinition = new CreateStatement.ColumnDefinition(columnName, dataType);
         columnDefinitionList.add(columnDefinition);
-        while (lexer.current().getType() == COMMA) {
+        while (lexer.currentType() == COMMA) {
             match(COMMA);
             columnName = match(IDENTIFIER).getText();
             dataType = tokenTypeToDataType(matchAny(INT, DOUBLE, STRING).getType());
@@ -117,7 +117,7 @@ public class Parser {
      * ;
      * </pre>
      */
-    public DropStatement dropTableStatement() throws SQLParseException {
+    public DropStatement dropStatement() throws SQLParseException {
         match(DROP);
         match(TABLE);
         String tableName = match(IDENTIFIER).getText();
@@ -127,7 +127,8 @@ public class Parser {
     /**
      * <pre>
      * insertStatement
-     *     : INSERT INTO tableName (OPEN_PAR columnName (COMMA columnName)* CLOSE_PAR)? VALUES OPEN_PAR expr (COMMA expr)* CLOSE_PAR
+     *     : INSERT INTO tableName (OPEN_PAR columnName (COMMA columnName)* CLOSE_PAR)? \
+     *     VALUES OPEN_PAR expr (COMMA expr)* CLOSE_PAR
      * ;
      * </pre>
      */
@@ -137,11 +138,11 @@ public class Parser {
         String tableName = match(IDENTIFIER).getText();
         List<String> columnList = new ArrayList<>();
         List<Expression> valueList = new ArrayList<>();
-        if (lexer.current().getType() == OPEN_PAR) {
+        if (lexer.currentType() == OPEN_PAR) {
             match(OPEN_PAR);
             String columnName = match(IDENTIFIER).getText();
             columnList.add(columnName);
-            while (lexer.current().getType() == COMMA) {
+            while (lexer.currentType() == COMMA) {
                 match(COMMA);
                 columnName = match(IDENTIFIER).getText();
                 columnList.add(columnName);
@@ -151,105 +152,13 @@ public class Parser {
         match(VALUES);
         match(OPEN_PAR);
         valueList.add(expression());
-        while (lexer.current().getType() == COMMA) {
+        while (lexer.currentType() == COMMA) {
             match(COMMA);
             valueList.add(expression());
         }
         match(CLOSE_PAR);
 
         return new InsertStatement(tableName, columnList, valueList);
-    }
-
-    /**
-     * <pre>
-     * selectStatement
-     *     : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)* \
-     *     (FROM tableReference (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)? \
-     *     (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?)?
-     *     // 最后一个 )? 指 FROM 及后面的从句都可以省略
-     * ;
-     * </pre>
-     */
-    public SelectStatement selectStatement() throws SQLParseException {
-        match(SELECT);
-
-        List<Pair<Expression, String>> selectItemList = new ArrayList<>();
-        selectItemList.add(new Pair<>(expression(), alias()));
-        while (lexer.current().getType() == COMMA) {
-            match(COMMA);
-            selectItemList.add(new Pair<>(expression(), alias()));
-        }
-
-        if (lexer.current().getType() != FROM) return new SelectStatement(selectItemList,
-                null, null, null, null, null);
-
-        match(FROM);
-        TableReference tableReference = tableReference();
-
-        Expression whereCondition = null;
-        if (lexer.current().getType() == WHERE) {
-            match(WHERE);
-            whereCondition = expression();
-        }
-
-        GroupBy groupBy = null;
-        if (lexer.current().getType() == GROUP) {
-            match(GROUP);
-            match(BY);
-            List<Expression> groupByList = new ArrayList<>();
-            groupByList.add(expression());
-            while (lexer.current().getType() == COMMA) {
-                match(COMMA);
-                groupByList.add(expression());
-            }
-
-            Expression havingCondition = null;
-            if (lexer.current().getType() == HAVING) {
-                match(HAVING);
-                havingCondition = expression();
-            }
-
-            groupBy = new GroupBy(groupByList, havingCondition);
-        }
-
-        OrderBy orderBy = null;
-        if (lexer.current().getType() == ORDER) {
-            match(ORDER);
-            match(BY);
-            List<Pair<Expression, Boolean>> orderByList = new ArrayList<>();
-            Expression expression = expression();
-            boolean desc = false;
-            if (lexer.current().getType() == ASC || lexer.current().getType() == DESC) {
-                desc = matchAny(ASC, DESC).getType() == DESC;
-            }
-            orderByList.add(new Pair<>(expression, desc));
-            while (lexer.current().getType() == COMMA) {
-                match(COMMA);
-                expression = expression();
-                desc = false;
-                if (lexer.current().getType() == ASC || lexer.current().getType() == DESC) {
-                    desc = matchAny(ASC, DESC).getType() == DESC;
-                }
-                orderByList.add(new Pair<>(expression, desc));
-            }
-
-            orderBy = new OrderBy(orderByList);
-        }
-
-        Limit limit = null;
-        if (lexer.current().getType() == LIMIT) {
-            match(LIMIT);
-            Expression limitExpression = expression();
-            Expression offsetExpression = null;
-            if (lexer.current().getType() == OFFSET) {
-                match(OFFSET);
-                offsetExpression = expression();
-            }
-            limit = new Limit(limitExpression, offsetExpression);
-        }
-
-        return new SelectStatement(selectItemList, tableReference,
-                whereCondition, groupBy, orderBy, limit);
     }
 
     /**
@@ -268,7 +177,7 @@ public class Parser {
         match(EQ);
         Expression newValue = expression();
         updateList.add(new Pair<>(columnName, newValue));
-        while (lexer.current().getType() == COMMA) {
+        while (lexer.currentType() == COMMA) {
             match(COMMA);
             columnName = match(IDENTIFIER).getText();
             match(EQ);
@@ -277,7 +186,7 @@ public class Parser {
         }
 
         Expression whereCondition = null;
-        if (lexer.current().getType() == WHERE) {
+        if (lexer.currentType() == WHERE) {
             match(WHERE);
             whereCondition = expression();
         }
@@ -297,11 +206,103 @@ public class Parser {
         match(FROM);
         String tableName = match(IDENTIFIER).getText();
         Expression expression = null;
-        if (lexer.current().getType() == WHERE) {
+        if (lexer.currentType() == WHERE) {
             match(WHERE);
             expression = expression();
         }
         return new DeleteStatement(tableName, expression);
+    }
+
+    /**
+     * <pre>
+     * selectStatement
+     *     : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)* \
+     *     (FROM tableReference (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)? \
+     *     (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?)?
+     *     // 最后一个 )? 指 FROM 及后面的从句都可以省略
+     * ;
+     * </pre>
+     */
+    public SelectStatement selectStatement() throws SQLParseException {
+        match(SELECT);
+
+        List<Pair<Expression, String>> selectItemList = new ArrayList<>();
+        selectItemList.add(new Pair<>(expression(), alias()));
+        while (lexer.currentType() == COMMA) {
+            match(COMMA);
+            selectItemList.add(new Pair<>(expression(), alias()));
+        }
+
+        if (lexer.currentType() != FROM) return new SelectStatement(selectItemList,
+                null, null, null, null, null);
+
+        match(FROM);
+        TableReference tableReference = tableReference();
+
+        Expression whereCondition = null;
+        if (lexer.currentType() == WHERE) {
+            match(WHERE);
+            whereCondition = expression();
+        }
+
+        GroupBy groupBy = null;
+        if (lexer.currentType() == GROUP) {
+            match(GROUP);
+            match(BY);
+            List<Expression> groupByList = new ArrayList<>();
+            groupByList.add(expression());
+            while (lexer.currentType() == COMMA) {
+                match(COMMA);
+                groupByList.add(expression());
+            }
+
+            Expression havingCondition = null;
+            if (lexer.currentType() == HAVING) {
+                match(HAVING);
+                havingCondition = expression();
+            }
+
+            groupBy = new GroupBy(groupByList, havingCondition);
+        }
+
+        OrderBy orderBy = null;
+        if (lexer.currentType() == ORDER) {
+            match(ORDER);
+            match(BY);
+            List<Pair<Expression, Boolean>> orderByList = new ArrayList<>();
+            Expression expression = expression();
+            boolean desc = false;
+            if (lexer.currentType() == ASC || lexer.currentType() == DESC) {
+                desc = matchAny(ASC, DESC).getType() == DESC;
+            }
+            orderByList.add(new Pair<>(expression, desc));
+            while (lexer.currentType() == COMMA) {
+                match(COMMA);
+                expression = expression();
+                desc = false;
+                if (lexer.currentType() == ASC || lexer.currentType() == DESC) {
+                    desc = matchAny(ASC, DESC).getType() == DESC;
+                }
+                orderByList.add(new Pair<>(expression, desc));
+            }
+
+            orderBy = new OrderBy(orderByList);
+        }
+
+        Limit limit = null;
+        if (lexer.currentType() == LIMIT) {
+            match(LIMIT);
+            Expression limitExpression = expression();
+            Expression offsetExpression = null;
+            if (lexer.currentType() == OFFSET) {
+                match(OFFSET);
+                offsetExpression = expression();
+            }
+            limit = new Limit(limitExpression, offsetExpression);
+        }
+
+        return new SelectStatement(selectItemList, tableReference,
+                whereCondition, groupBy, orderBy, limit);
     }
 
     //****************************************** statement *******************************************
@@ -312,10 +313,10 @@ public class Parser {
      * 如果没有 alias 的话就返回 null
      */
     private String alias() throws SQLParseException {
-        if (lexer.current().getType() == AS) {
+        if (lexer.currentType() == AS) {
             match(AS);
         }
-        if (lexer.current().getType() == IDENTIFIER) {
+        if (lexer.currentType() == IDENTIFIER) {
             return match(IDENTIFIER).getText();
         }
 
@@ -331,12 +332,12 @@ public class Parser {
      */
     private TableReference tableReference() throws SQLParseException {
         TableReference left = tableFactor();
-        while (lexer.current().getType() == INNER || lexer.current().getType() == LEFT) {
+        while (lexer.currentType() == INNER || lexer.currentType() == LEFT) {
             TableJoin.JoinType joinType = matchAny(INNER, LEFT).getType() == INNER ? TableJoin.JoinType.INNER : TableJoin.JoinType.LEFT;
             match(JOIN);
             TableReference right = tableFactor();
             Expression on = null;
-            if (lexer.current().getType() == ON) {
+            if (lexer.currentType() == ON) {
                 match(ON);
                 on = expression();
             }
@@ -349,19 +350,19 @@ public class Parser {
      * <pre>
      * tableFactor
      *     : tableName (AS? alias)?
-     *     | OPEN_PAR selectStatement CLOSE_PAR AS? alias // 要求派生表用于别名
+     *     | OPEN_PAR selectStatement CLOSE_PAR AS? alias // 要求派生表拥有别名
      *     | OPEN_PAR tableReference CLOSE_PAR
      * ;
      * </pre>
      */
     private TableReference tableFactor() throws SQLParseException {
-        if (lexer.current().getType() == IDENTIFIER) {
+        if (lexer.currentType() == IDENTIFIER) {
             String tableName = match(IDENTIFIER).getText();
             String alias = alias();
             return new RealTableFactor(tableName, alias);
         } else {
             match(OPEN_PAR);
-            if (lexer.current().getType() == SELECT) {
+            if (lexer.currentType() == SELECT) {
                 SelectStatement selectStatement = selectStatement();
                 match(CLOSE_PAR);
                 String alias = alias();
@@ -389,7 +390,7 @@ public class Parser {
      */
     public Expression expression() throws SQLParseException {
         Expression left = andExpression();
-        while (lexer.current().getType() == OR) {
+        while (lexer.currentType() == OR) {
             match(OR);
             Expression right = andExpression();
             left = new OrExpression(left, right);
@@ -406,7 +407,7 @@ public class Parser {
      */
     private Expression andExpression() throws SQLParseException {
         Expression left = notExpression();
-        while (lexer.current().getType() == AND) {
+        while (lexer.currentType() == AND) {
             match(AND);
             Expression right = notExpression();
             left = new AndExpression(left, right);
@@ -423,7 +424,7 @@ public class Parser {
      * </pre>
      */
     private Expression notExpression() throws SQLParseException {
-        if (lexer.current().getType() == NOT) {
+        if (lexer.currentType() == NOT) {
             match(NOT);
             return new NotExpression(notExpression());
         }
@@ -433,14 +434,14 @@ public class Parser {
     /**
      * <pre>
      * betweenExpr
-     *     : predict BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
-     *     | predict
+     *     : predicate BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
+     *     | predicate
      * ;
      * </pre>
      */
     private Expression betweenExpression() throws SQLParseException {
         Expression target = predicate();
-        if (lexer.current().getType() == BETWEEN) {
+        if (lexer.currentType() == BETWEEN) {
             match(BETWEEN);
             Expression left = betweenExpression();
             match(AND);
@@ -452,7 +453,7 @@ public class Parser {
 
     /**
      * <pre>
-     * predict
+     * predicate
      *     : addExpr (NOT? IN OPEN_PAR (expr (COMMA expr)* | selectStatement) CLOSE_PAR
      *              | NOT? LIKE addExpr
      *              | NOT? REGEXP addExpr
@@ -463,7 +464,7 @@ public class Parser {
      */
     private Expression predicate() throws SQLParseException {
         Expression left = addExpression();
-        TokenType nextType = lexer.current().getType();
+        TokenType nextType = lexer.currentType();
         while (nextType == NOT || nextType == IN || nextType == LIKE || nextType == REGEXP || nextType == IS
                 || nextType == EQ || nextType == LT || nextType == GT || nextType == LE || nextType == GE || nextType == NE) {
             if (nextType == EQ || nextType == LT || nextType == GT ||
@@ -474,7 +475,7 @@ public class Parser {
             } else if (nextType == IS) {
                 match(IS);
                 boolean not = false;
-                if (lexer.current().getType() == NOT) {
+                if (lexer.currentType() == NOT) {
                     not = true;
                     match(NOT);
                 }
@@ -486,22 +487,22 @@ public class Parser {
                     match(NOT);
                     not = true;
                 }
-                if ((lexer.current().getType() == LIKE)) {
+                if ((lexer.currentType() == LIKE)) {
                     match(LIKE);
                     left = new LikeExpression(not, left, addExpression());
-                } else if (lexer.current().getType() == REGEXP) {
+                } else if (lexer.currentType() == REGEXP) {
                     match(REGEXP);
                     left = new RegexpExpression(not, left, addExpression());
                 } else {
                     match(IN);
                     match(OPEN_PAR);
-                    if (lexer.current().getType() == SELECT) {
+                    if (lexer.currentType() == SELECT) {
                         SelectStatement subQuery = selectStatement();
                         left = new InSubQueryExpression(not, left, subQuery);
                     } else {
                         List<Expression> list = new ArrayList<>();
                         list.add(expression());
-                        while (lexer.current().getType() == COMMA) {
+                        while (lexer.currentType() == COMMA) {
                             match(COMMA);
                             list.add(expression());
                         }
@@ -511,7 +512,7 @@ public class Parser {
                 }
             }
 
-            nextType = lexer.current().getType();
+            nextType = lexer.currentType();
         }
 
         return left;
@@ -526,7 +527,7 @@ public class Parser {
      */
     private Expression addExpression() throws SQLParseException {
         Expression left = multExpr();
-        while (lexer.current().getType() == ADD || lexer.current().getType() == MINUS) {
+        while (lexer.currentType() == ADD || lexer.currentType() == MINUS) {
             BinaryExpression.BinaryOperatorType op = tokenTypeToBinaryOperatorType(matchAny(ADD, MINUS).getType());
             Expression right = multExpr();
             left = new BinaryExpression(op, left, right);
@@ -543,7 +544,7 @@ public class Parser {
      */
     private Expression multExpr() throws SQLParseException {
         Expression left = unaryExpr();
-        while (lexer.current().getType() == MULT || lexer.current().getType() == DIV) {
+        while (lexer.currentType() == MULT || lexer.currentType() == DIV) {
             BinaryExpression.BinaryOperatorType op = tokenTypeToBinaryOperatorType(matchAny(MULT, DIV).getType());
             Expression right = unaryExpr();
             left = new BinaryExpression(op, left, right);
@@ -560,7 +561,7 @@ public class Parser {
      * </pre>
      */
     private Expression unaryExpr() throws SQLParseException {
-        if (lexer.current().getType() == ADD || lexer.current().getType() == MINUS) {
+        if (lexer.currentType() == ADD || lexer.currentType() == MINUS) {
             UnaryExpression.UnaryOperationType op = tokenTypeToUnaryOperatorType(matchAny(ADD, MINUS).getType());
             return new UnaryExpression(op, unaryExpr());
         }
@@ -585,7 +586,7 @@ public class Parser {
      * </pre>
      */
     private Expression atomExpression() throws SQLParseException {
-        switch (lexer.current().getType()) {
+        switch (lexer.currentType()) {
             case INT_LITERAL:
                 String intLiteral = match(INT_LITERAL).getText();
                 return new IntExpression(Integer.parseInt(intLiteral));
@@ -602,26 +603,26 @@ public class Parser {
                 return new WildcardExpression();
             case IDENTIFIER:
                 String identifier = match(IDENTIFIER).getText();
-                if (lexer.current().getType() == DOT) {
+                if (lexer.currentType() == DOT) {
                     match(DOT);
-                    if (lexer.current().getType() == MULT) {
+                    if (lexer.currentType() == MULT) {
                         match(MULT);
                         return new WildcardExpression(identifier);
-                    } else if (lexer.current().getType() == IDENTIFIER) {
+                    } else if (lexer.currentType() == IDENTIFIER) {
                         String columnName = match(IDENTIFIER).getText();
                         return new ColumnNameExpression(identifier, columnName);
                     } else {
                         throw new SQLParseException("Expected */identifier");
                     }
-                } else if (lexer.current().getType() == OPEN_PAR) {
+                } else if (lexer.currentType() == OPEN_PAR) {
                     match(OPEN_PAR);
                     List<Expression> argumentList = new ArrayList<>();
-                    if (lexer.current().getType() == CLOSE_PAR) { // 没有参数
+                    if (lexer.currentType() == CLOSE_PAR) { // 没有参数
                         match(CLOSE_PAR);
                         return new FunctionCallExpression(identifier, argumentList);
                     } else {
                         argumentList.add(expression());
-                        while (lexer.current().getType() == COMMA) {
+                        while (lexer.currentType() == COMMA) {
                             match(COMMA);
                             argumentList.add(expression());
                         }
@@ -639,7 +640,7 @@ public class Parser {
                 return new SubQueryExpression(true, subQuery);
             case OPEN_PAR:
                 match(OPEN_PAR);
-                if (lexer.current().getType() == SELECT) {
+                if (lexer.currentType() == SELECT) {
                     subQuery = selectStatement();
                     match(CLOSE_PAR);
                     return new SubQueryExpression(false, subQuery);

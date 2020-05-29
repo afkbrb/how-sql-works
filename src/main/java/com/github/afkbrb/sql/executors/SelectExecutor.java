@@ -38,6 +38,8 @@ public class SelectExecutor extends Executor {
 
     /**
      * 处理 select 比较麻烦，需要考虑多种情况。
+     *
+     * tableName 是查询结果的表名
      */
     public Table doSelect(@NotNull SelectStatement selectStatement, @NotNull String tableName) throws SQLExecuteException {
         Objects.requireNonNull(selectStatement);
@@ -242,7 +244,6 @@ public class SelectExecutor extends Executor {
                 TypedValue thisResult = rowToTypedValue.get(thisRow).get(i);
                 TypedValue otherResult = rowToTypedValue.get(otherRow).get(i);
                 int cmp = thisResult.compareTo(otherResult);
-                System.out.println("cmp" + cmp);
                 if (cmp == 0) continue; // 继续比较
                 return orderByList.get(i).getValue() ? -cmp : cmp;
             }

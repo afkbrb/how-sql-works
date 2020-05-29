@@ -21,6 +21,6 @@ public class DeleteExecutor extends Executor {
         for (Iterator<Row> iterator = rows.iterator(); iterator.hasNext(); ) {
             if (predicate(table.getSchema(), iterator.next(), condition)) iterator.remove();
         }
-        updateTable(table);
+        saveTable(table);
     }
 }

@@ -40,6 +40,6 @@ public class UpdateExecutor extends Executor {
             }
         }
 
-        updateTable(table);
+        saveTable(table);
     }
 }

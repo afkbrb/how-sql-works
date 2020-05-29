@@ -38,6 +38,10 @@ public class Lexer {
         return lookAhead(0);
     }
 
+    public TokenType currentType() throws SQLParseException {
+        return lookAhead(0).getType();
+    }
+
     public Token peek() throws SQLParseException {
         return lookAhead(1);
     }
