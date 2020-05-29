@@ -5,32 +5,25 @@ statementList
 ;
 
 statement
-    : createTableStatement
-    | dropTableStatement
+    : createStatement
+    | dropStatement
     | insertStatement
-    | selectStatement
     | updateStatement
     | deleteStatement
+    | selectStatement
 ;
 
-createTableStatement
+createStatement
     : CREATE TABLE tableName OPEN_PAR columnName columnType (COMMA columnName columnType)* CLOSE_PAR
 ;
 
-dropTableStatement
+dropStatement
     : DROP TABLE tableName
 ;
 
 insertStatement
     : INSERT INTO tableName (OPEN_PAR columnName (COMMA columnName)* CLOSE_PAR)?
     VALUES OPEN_PAR expr (COMMA expr)* CLOSE_PAR
-;
-
-selectStatement
-    : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)*
-    (FROM tableReference (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)?
-    (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?)?
-    // 最后一个 )? 指 FROM 及后面的从句都可以省略
 ;
 
 updateStatement
@@ -41,13 +34,20 @@ deleteStatement
     : DELETE FROM tableName (WHERE expr)?
 ;
 
+selectStatement
+    : SELECT expr (AS? alias)? (COMMA expr (AS? alias)?)*
+    (FROM tableReference (WHERE expr)? (GROUP BY expr (COMMA expr)* (HAVING expr)?)?
+    (ORDER BY expr (ASC | DESC)? (COMMA expr (ASC | DESC)?)*)? (LIMIT expr (OFFSET expr)?)?)?
+    // 最后一个 )? 指 FROM 及后面的从句都可以省略
+;
+
 tableReference
     : tableFactor ((INNER | LEFT) JOIN tableFactor (ON expr)?)*
 ;
 
 tableFactor
     : tableName (AS? alias)?
-    | OPEN_PAR selectStatement CLOSE_PAR AS? alias // 要求派生表用于别名
+    | OPEN_PAR selectStatement CLOSE_PAR AS? alias // 要求派生表拥有别名
     | OPEN_PAR tableReference CLOSE_PAR
 ;
 
@@ -65,11 +65,11 @@ notExpr
 ;
 
 betweenExpr
-    : predict BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
-    | predict
+    : predicate BETWEEN betweenExpr AND betweenExpr // 支持 between 套娃
+    | predicate
 ;
 
-predict
+predicate
     : addExpr (NOT? IN OPEN_PAR (expr (COMMA expr)* | selectStatement) CLOSE_PAR
              | NOT? LIKE addExpr
              | NOT? REGEXP addExpr
