@@ -35,7 +35,3 @@ Bye :)
 1. 使用一个递归下降分析器对 SQL 进行解析，生成抽象语法树。
 2. 采用 visitor 模式遍历语法树，实现了类型推导器 ([TypeInferer](./src/main/java/com/github/afkbrb/sql/visitors/TypeInferer.java))，聚集函数检测器 ([AggregateDetector](./src/main/java/com/github/afkbrb/sql/visitors/AggregateDetector.java))，求值器 ([Evaluator](src/main/java/com/github/afkbrb/sql/visitors/AbstractEvaluator.java))，语法树打印器 ([ToStringVisitor](./src/main/java/com/github/afkbrb/sql/visitors/ToStringVisitor.java))。
 3. 语法树被提交给执行器，执行器利用上面提到的类型推导器，聚集函数检测器（用于 select）和求值器完成对 SQL 语句的执行，执行结果通过 [TableManager](./src/main/java/com/github/afkbrb/sql/TableManager.java) 管理，如果指定了数据库目录的话，对数据的修改将被持久化。
-
-## TODO
-
-- [ ] 查询优化

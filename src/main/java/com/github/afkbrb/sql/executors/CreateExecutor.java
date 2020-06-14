@@ -3,6 +3,7 @@ package com.github.afkbrb.sql.executors;
 import com.github.afkbrb.sql.SQLExecuteException;
 import com.github.afkbrb.sql.TableManager;
 import com.github.afkbrb.sql.ast.statements.CreateStatement;
+import com.github.afkbrb.sql.ast.statements.CreateStatement.ColumnDefinition;
 import com.github.afkbrb.sql.model.Column;
 import com.github.afkbrb.sql.model.Table;
 
@@ -12,8 +13,6 @@ import java.util.List;
 
 public class CreateExecutor extends Executor {
 
-
-
     /**
      * 根据 CreateStatement 创建一个表
      */
@@ -22,9 +21,9 @@ public class CreateExecutor extends Executor {
         requireTableNotExists(tableName);
 
         List<Column> columnList = new ArrayList<>();
-        List<CreateStatement.ColumnDefinition> columnDefinitionList = createStatement.getColumnDefinitionList();
+        List<ColumnDefinition> columnDefinitionList = createStatement.getColumnDefinitionList();
         for (int i = 0; i < columnDefinitionList.size(); i++) {
-            CreateStatement.ColumnDefinition columnDefinition = columnDefinitionList.get(i);
+            ColumnDefinition columnDefinition = columnDefinitionList.get(i);
             Column column = new Column(i, columnDefinition.getColumnName(), columnDefinition.getColumnType(), tableName);
             columnList.add(column);
         }
