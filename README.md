@@ -11,7 +11,8 @@ SQL 的解析与执行，基于简易 CSV 数据库。
 提供 SQLite 风格的元命令（meta command）。
 
 ```
-afkbrb> java -jar how-sql-works.jar
+afkbrb> mvn package
+afkbrb> java -jar target/how-sql-works-1.0.jar
 Welcome :)
 Enter '.help' for usage hints
 Connected to a transient in-memory database
