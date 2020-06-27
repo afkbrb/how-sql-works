@@ -33,7 +33,9 @@ Bye :)
 
 ## 架构
 
-<img src="./imgs/arch.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/arch.png" width="433px" height="345px" />
+</p>
 
 ## 示例
 
@@ -74,27 +76,41 @@ Bye :)
 
 可以在启动系统时指定数据库目录将这些数据加载到系统中，如下图所示：
 
-<img src="./imgs/load.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/load.png" width="511px" height="482px" />
+</p>
 
 分组：
 
-<img src="./imgs/group.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/group.png" width="405px" height="254px" />
+</p>
+
 
 分页:
 
-<img src="./imgs/page.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/page.png" width="290px" height="253px" />
+</p>
+
 
 排序：
 
-<img src="./imgs/order.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/order.png" width="330px" height="280px" />
+</p>
 
 查询每个学生所有课程的成绩，按“学生姓名 课程设计 成绩”形式展示：
 
-<img src="./imgs/grade1.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/grade1.png" width="385px" height="365px" />
+</p>
 
 查询微积分成绩比所有人的数据库成绩都高的学生的姓名：
 
-<img src="./imgs/grade2.png" style="zoom:60%;" />
+<p align="center">
+<img src="./imgs/grade2.png" width="470px" height="205px" />
+</p>
 
 ## 说明
 
