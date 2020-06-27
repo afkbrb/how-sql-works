@@ -6,13 +6,13 @@ SQL 的解析与执行，基于简易 CSV 数据库。
 
 没有提供对数据库的 CRUD 语句，一个目录就是一个数据库，一个 csv 文件就是一张表。
 
-不支持事务、并发、视图、完整性约束等，一个玩具而已。
+不支持事务、并发、视图、完整性约束等。
 
 提供 SQLite 风格的元命令（meta command）。
 
 ```
-afkbrb> mvn package
-afkbrb> java -jar target/how-sql-works-1.0.jar
+how-sql-works> mvn package
+how-sql-works> java -jar target/how-sql-works-1.0.jar
 Welcome :)
 Enter '.help' for usage hints
 Connected to a transient in-memory database
@@ -33,6 +33,69 @@ Bye :)
 
 ## 架构
 
-1. 使用一个递归下降分析器对 SQL 进行解析，生成抽象语法树。
-2. 采用 visitor 模式遍历语法树，实现了类型推导器 ([TypeInferer](./src/main/java/com/github/afkbrb/sql/visitors/TypeInferer.java))，聚集函数检测器 ([AggregateDetector](./src/main/java/com/github/afkbrb/sql/visitors/AggregateDetector.java))，求值器 ([Evaluator](src/main/java/com/github/afkbrb/sql/visitors/AbstractEvaluator.java))，语法树打印器 ([ToStringVisitor](./src/main/java/com/github/afkbrb/sql/visitors/ToStringVisitor.java))。
-3. 语法树被提交给执行器，执行器利用上面提到的类型推导器，聚集函数检测器（用于 select）和求值器完成对 SQL 语句的执行，执行结果通过 [TableManager](./src/main/java/com/github/afkbrb/sql/TableManager.java) 管理，如果指定了数据库目录的话，对数据的修改将被持久化。
+<img src="./imgs/arch.png" style="zoom:60%;" />
+
+## 示例
+
+./example 下面有如下 csv 文件：
+
+```
+// student.csv
+"id","name","age","gender","class"
+"INT","STRING","INT","STRING","INT"
+1,"张三",20,"男",1
+2,"李四",20,"男",1
+3,"王五",21,"女",2
+4,"赵六",22,"女",2
+
+// teacher.csv
+"id","name","department"
+"INT","STRING","STRING"
+1,"王德法","计算机学院"
+2,"张伟","数学学院"
+
+// course.csv
+"id","name","teacher"
+"INT","STRING","INT"
+1,"数据库",1
+2,"微积分",2
+
+// grade.csv
+"student","course","grade"
+"INT","INT","DOUBLE"
+1,1,66.6
+1,2,85.0
+2,1,90.0
+2,2,59.0
+3,1,88.0
+4,2,100.0
+
+```
+
+可以在启动系统时指定数据库目录将这些数据加载到系统中，如下图所示：
+
+<img src="./imgs/load.png" style="zoom:60%;" />
+
+分组：
+
+<img src="./imgs/group.png" style="zoom:60%;" />
+
+分页:
+
+<img src="./imgs/page.png" style="zoom:60%;" />
+
+排序：
+
+<img src="./imgs/order.png" style="zoom:60%;" />
+
+查询每个学生所有课程的成绩，按“学生姓名 课程设计 成绩”形式展示：
+
+<img src="./imgs/grade1.png" style="zoom:60%;" />
+
+查询微积分成绩比所有人的数据库成绩都高的学生的姓名：
+
+<img src="./imgs/grade2.png" style="zoom:60%;" />
+
+## 说明
+
+[SQL.g4](./SQL.g4) 是对项目支持的 SQL 语法的描述，[Parser](./src/main/java/com/github/afkbrb/sql/Parser.java) 就是根据该语法写的。
